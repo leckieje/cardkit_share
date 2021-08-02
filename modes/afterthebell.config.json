@@ -1,0 +1,144 @@
+[{
+  "name": "After the Bell",
+  "fontFamilySerif": "Tiempos Headline,georgia,serif",
+  "fontFamilySansSerif": "Graphik,helvetica,sans-serif",
+  "fontWeight": 400,
+  "fontSize": 10,
+  "uppercase": true,
+  "opacity": "1",
+  "margin": 20,
+  "maxWidth": 636,
+  "maxHeight": 268,
+  "defaultText": "",
+  "colors": {
+  	"background": "#072f48",
+  	"text": "#F5F5F0",
+  	"highlight": "#F5F5F0",
+    "credit": "#ffffff",
+    "secondary":"#fdf7ad"
+
+  },
+  "shadow": "#333",
+  "sizes": [
+    {
+      "name": "Social",
+      "width": 513,
+      "height": 255
+    }
+  ],
+  "logo": {
+    "enabled": true,
+    "display": "block",
+    "src": "logo/Barrons_Logo-light.svg",
+    "width": 80,
+    "height": 17,
+    "opacity": "1",
+    "margin": -4,
+    "margin-y": -20,
+    "y": 36,
+    "x": 244
+  },
+  "bell": {
+    "enabled": true,
+    "display": "block",
+    "src": "images/after-the-bell.svg",
+    "width": "107%",
+    "height": "107%",
+    "opacity": "1",
+    "margin": -4,
+    "margin-y": -20,
+    "y": 10,
+    "x": 350
+  },
+  "overlay": {
+    "opacity": "1",
+    "blend": "overlay"
+  },
+  "primary": {
+  	"defaultValue": "After the Bell",
+    "style":{
+      "letter-spacing":"2px"
+    },
+  	"fontSize": 32,
+    "fontFamily": "Graphik,helvetica,sans-serif",
+  	"fontWeight": 700,
+  	"minFontSize": 32,
+  	"maxFontSize": 32,
+  	"y": 52,
+  	"draggable": false
+  },
+  "bullet1": {
+    "enabled": false,
+    "defaultValue": "•",
+    "helpText": "Beware: Text doesn't automatically wrap to a second line.",
+    "fontSize": 16,
+    "lineHeight":90,
+    "minFontSize": 16,
+    "maxFontSize": 16,
+    "y": 100,
+    "fontWeight": 500,
+    "draggable": true
+  },
+    "bullet2": {
+    "defaultValue": "•",
+    "helpText": "Beware: Text doesn't automatically wrap to a second line.",
+    "fontSize": 16,
+    "lineHeight":90,
+    "minFontSize": 16,
+    "maxFontSize": 16,
+    "y": 150,
+    "fontWeight": 500,
+    "draggable": true
+  },
+    "bullet3": {
+    "defaultValue": "•",
+    "helpText": "Beware: Text doesn't automatically wrap to a second line.",
+    "fontSize": 16,
+    "lineHeight":90,
+    "minFontSize": 16,
+    "maxFontSize": 16,
+    "y": 200,
+    "fontWeight": 500,
+    "draggable": true
+  },
+  "secondary1": {
+  	"defaultValue": "First item goes here no more\nthan two lines",
+  	"helpText": "Beware: Text doesn't automatically wrap to a second line.",
+  	"fontSize": 16,
+  	"minFontSize": 16,
+  	"maxFontSize": 16,
+  	"y": 100,
+  	"fontWeight": 400,
+  	"draggable": true
+  },
+  "secondary2": {
+    "defaultValue": "second item goes here no more\nthan two lines",
+    "helpText": "Beware: Text doesn't automatically wrap to a second line.",
+    "fontSize": 16,
+    "minFontSize": 16,
+    "maxFontSize": 16,
+    "y": 150,
+    "fontWeight": 400,
+    "draggable": true
+  },
+  "secondary3": {
+    "defaultValue": "third item goes here no more\nthan two lines",
+    "helpText": "Beware: Text doesn't automatically wrap to a second line.",
+    "fontSize": 16,
+    "minFontSize": 16,
+    "maxFontSize": 16,
+    "y": 200,
+    "fontWeight": 400,
+    "draggable": true
+  },
+  "quote": {
+  	"defaultValue": "",
+  	"fontSize": 55,
+  	"fontWeight": 400,
+  	"minFontSize": 20,
+  	"maxFontSize": 80,
+  	"y": 100,
+  	"draggable": true
+  }
+}
+]

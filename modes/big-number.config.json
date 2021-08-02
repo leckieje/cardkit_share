@@ -1,0 +1,89 @@
+[{
+	"name": "Light",
+	"background": "#FFFFFF",
+	"headline": "#333333",
+	"footnote": "Light theme only: Align content close to the bottom and build upwards (as seen with default content).",
+	"primary": {
+		"defaultValue": "33.8 million",
+		"fontSize": 55,
+		"minFontSize": 36,
+		"maxFontSize": 72,
+		"y": 68,
+		"draggable": true,
+		"tspan": [{
+
+		},{
+			"fontSize": 18,
+			"y": "",
+			"dy": "26",
+			"font-weight": 500,
+			"letter-spacing": "1px"
+		}]
+	},
+	"secondary": {
+		"defaultValue": "Estimated number tons \nof ore in Bald Mountain",
+		"helpText": "Sentence case.",
+		"fontSize": 16,
+		"minFontSize": 15,
+		"maxFontSize": 17,
+		"y": 110,
+		"fontWeight": 500,
+		"draggable": true,
+		"tspan": [{
+			"dy": 18
+		},{
+			"dy": 22
+		}]
+	},
+	"dy": "1.2em",
+	"colors": {
+		"secondary": "#999999",
+		"positive": "#228B22",
+		"negative": "#DC143C",
+		"neutral": "#c3a730"
+	}
+},
+{
+	"name": "Dark",
+	"background": "#333333",
+	"headline": "#dddddd",
+	"primary": {
+		"defaultValue": "33.8 million",
+		"fontSize": 55,
+		"minFontSize": 36,
+		"maxFontSize": 72,
+		"y": 60,
+		"draggable": true,
+		"tspan": [{
+
+		},{
+			"fontSize": 18,
+			"y": "",
+			"dy": "26",
+			"font-weight": 500,
+			"letter-spacing": "1px"
+		}]
+	},
+	"secondary": {
+		"defaultValue": "Estimated number tons \nof ore in Bald Mountain",
+		"helpText": "Sentence case.",
+		"fontSize": 16,
+		"minFontSize": 14,
+		"maxFontSize": 17,
+		"y": 110,
+		"fontWeight": 500,
+		"draggable": true,
+		"tspan": [{
+			"dy": 10
+		},{
+			"dy": 14
+		}]
+	},
+	"dy": "1.2em",
+	"colors": {
+		"secondary": "#dddddd",
+		"positive": "#80e080",
+		"negative": "#ef4e6e",
+		"neutral": "#edc639"
+	}
+}]

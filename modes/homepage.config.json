@@ -1,0 +1,71 @@
+[{
+	"name": "Quote",
+	"background": "#FFFFFF",
+	"headline": "#333333",
+	"primary": {
+		"defaultValue": 2883.86,
+		"fontSize": 46,
+		"minFontSize": 32,
+		"maxFontSize": 60,
+		"y": 75
+	},
+	"secondary": {
+		"defaultValue": "1.62 (0.08%)",
+		"fontSize": 23,
+		"minFontSize": 18,
+		"maxFontSize": 30,
+		"y": 85,
+		"fontWeight": "normal",
+		"tspan": {
+			"x": "",
+			"y": "",
+            "dy": -1
+        },
+        "change": {
+
+        }
+	},
+	"colors": {
+		"primary": "#333333"
+	}
+},
+{
+	"name": "Big number",
+	"background": "#FFFFFF",
+	"headline": "#333333",
+	"primary": {
+		"defaultValue": "33.8 million",
+		"fontSize": 55,
+		"minFontSize": 36,
+		"maxFontSize": 72,
+		"y": 60,
+		"draggable": true,
+		"tspan": [{
+
+		},{
+			"fontSize": 20,
+			"y": "",
+			"dy": "27",
+			"font-weight": 500,
+			"letter-spacing": "1px"
+		}]
+	},
+	"secondary": {
+		"defaultValue": "Estimated Number Tons \nof Ore in Bald Mountain",
+		"helpText": "Sentence case. Beware: Text doesn't wrap to a second line in image automatically.",
+		"fontSize": 16,
+		"minFontSize": 14,
+		"maxFontSize": 17,
+		"y": 110,
+		"fontWeight": 600,
+		"draggable": true,
+		"tspan": [{
+			"dy": 10
+		},{
+			"dy": 14
+		}]
+	},
+	"colors": {
+		"secondary": "#999999"
+	}
+}]
