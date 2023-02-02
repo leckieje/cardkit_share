@@ -1,16 +1,135 @@
-<!doctype html> <html class="no-js"> <head> <meta charset="utf-8"> <title>CardKit</title> <link rel="shortcut icon" href="images/tool.ico"> <meta name="description" content=""> <meta name="viewport" content="width=device-width,initial-scale=1"> <link href="http://asset.wsj.net/public/barrons_article.production-138d99eb.css" rel="stylesheet" type="text/css"> <link rel="stylesheet" href="http://graphics.wsj.com/libs/css/bootstrap/3.3.2/bootstrap.min.css"> <link rel="stylesheet" href="styles/vendor.6ed9dd91.css"> <link rel="stylesheet" href="styles/main.745e34f3.css"> <!-- Fonts
-    <link href="http://fonts.wsj.net/HCo_Whitney/font_HCo_Whitney.css" rel="stylesheet" type="text/css" />
-    <link href="http://fonts.wsj.net/HCo_Chronicle/font_HCo_Chronicle.css" rel="stylesheet" type="text/css" />--> <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet" type="text/css"> <script>function loadFont(a,b,c,d){function p(){if(!window.FontFace)return!1;var a=new FontFace("t",'url("data:application/font-woff2,") format("woff2")',{}),b=a.load();try{b.then(null,function(){})}catch(a){}return"loading"===a.status}var e=navigator.userAgent,f=!window.addEventListener||e.match(/(Android (2|3|4.0|4.1|4.2|4.3))|(Opera (Mini|Mobi))/)&&!e.match(/Chrome/);if(!f){var g={};try{g=localStorage||{}}catch(a){}var h="x-font-"+a,i=h+"url",j=h+"css",k=g[i],l=g[j],m=document.createElement("style");if(m.rel="stylesheet",document.head.appendChild(m),!l||k!==b&&k!==c){var n=c&&p()?c:b,o=new XMLHttpRequest;o.open("GET",n),o.onload=function(){o.status>=200&&o.status<400&&(g[i]=n,g[j]=o.responseText,d||(m.textContent=o.responseText))},o.send()}else m.textContent=l}}</script> <script type="text/javascript">loadFont('Escrow', 'https://www.wsj.com/fonts/escrow.css');
+<!DOCTYPE html>
+<html class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <title>CardKit</title>
+    <link rel="shortcut icon" href="images/tool.ico" />
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link
+      href="https://asset.wsj.net/public/barrons_article.production-138d99eb.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://graphics.wsj.com/libs/css/bootstrap/3.3.2/bootstrap.min.css"
+    />
+    <link rel="stylesheet" href="styles/vendor.6ed9dd91.css" />
+    <link rel="stylesheet" href="styles/main.745e34f3.css" />
+    <link
+      href="https://fonts.googleapis.com/css?family=Lato"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script>
+      function loadFont(a, b, c, d) {
+        function p() {
+          if (!window.FontFace) return !1;
+          var a = new FontFace(
+              't',
+              'url("data:application/font-woff2,") format("woff2")',
+              {},
+            ),
+            b = a.load();
+          try {
+            b.then(null, function () {});
+          } catch (a) {}
+          return 'loading' === a.status;
+        }
+        var e = navigator.userAgent,
+          f =
+            !window.addEventListener ||
+            (e.match(/(Android (2|3|4.0|4.1|4.2|4.3))|(Opera (Mini|Mobi))/) &&
+              !e.match(/Chrome/));
+        if (!f) {
+          var g = {};
+          try {
+            g = localStorage || {};
+          } catch (a) {}
+          var h = 'x-font-' + a,
+            i = h + 'url',
+            j = h + 'css',
+            k = g[i],
+            l = g[j],
+            m = document.createElement('style');
+          if (
+            ((m.rel = 'stylesheet'),
+            document.head.appendChild(m),
+            !l || (k !== b && k !== c))
+          ) {
+            var n = c && p() ? c : b,
+              o = new XMLHttpRequest();
+            o.open('GET', n),
+              (o.onload = function () {
+                o.status >= 200 &&
+                  o.status < 400 &&
+                  ((g[i] = n),
+                  (g[j] = o.responseText),
+                  d || (m.textContent = o.responseText));
+              }),
+              o.send();
+          } else m.textContent = l;
+        }
+      }
+    </script>
+    <script type="text/javascript">
+      loadFont('Escrow', 'https://www.wsj.com/fonts/escrow.css');
       loadFont('Exchange', 'https://www.wsj.com/fonts/exchange.css');
       loadFont('Retina', 'https://www.wsj.com/fonts/retina.css');
       loadFont('Lato', 'https://fonts.googleapis.com/css?family=Lato');
       loadFont('Muli', 'https://fonts.googleapis.com/css?family=Muli');
-      loadFont('Tiempos Headline', 'https://www.barrons.com/fonts/woffs/tiempos/TiemposHeadline-Regular.woff');
-      loadFont('Aileron-Regular', 'https://www.barrons.com/fonts/woffs/aileron/Aileron-Regular.woff');
-      loadFont('Aileron-Bold', 'https://www.barrons.com/fonts/woffs/aileron/Aileron-Bold.woff');
-      loadFont('Graphik', './styles/fonts/graphik.css');</script>  <body ng-app="cardkitApp"> <header id="header" class="top-header"> <a class="logo" href="//graphicsdev.dowjones.net/tools/#/" title="Dow Jones"><img src="images/dj.svg"></a> <span class="text">CardKit</span> <nav id="nav"> <ul> <li class="link"><a href="//graphicstools.dowjones.net/quoted/">Quoted</a></li> <li class="link"><a class="button" ui-sref="big-number">Number</a></li> <li class="link"><a class="button" ui-sref="stock">Stock</a></li> <li class="link"><a class="button" ui-sref="watermark">Watermark</a></li> <li class="link"><a class="button" ui-sref="afterthebell">After The Bell</a></li> <li class="link"><a class="button" ui-sref="barrons">Barron's</a></li> <li class="link"><a class="button" ui-sref="mansion-global">Mansion Global</a></li> <li class="link"><a class="button" ui-sref="marketwatch">MarketWatch</a></li> <li class="link"><a class="button" ui-sref="moneyish">Moneyish</a></li> <li class="link"><a class="button" ui-sref="wsjpro">WSJ Pro</a></li> <!--<li class="link"><a class="button" ui-sref="example">Example</a></li>--> </ul> </nav> </header> <main id="body" class="container-wide"> <div ui-view class="row"></div> <!--<div ui-view="viewSvg"></div>--> </main> <!--<footer id="footer">
-        <p class="version">CardKit v2.0.0-alpha <a href="http://www.github.com/times/cardkit-v2"><i class="fa fa-github"></i></a></p>
-        <p class="credits"><a href="http://www.github.com/times/cardkit-v2">Source available on GitHub</a> | Created by <a href="https://github.com/chrishutchinson">Chris Hutchinson</a> for <a href="https://medium.com/digital-times">The Times and Sunday Times Digital Team</a></p>
-    </footer>--> <!--[if lt IE 9]>
-    <script src="scripts/oldieshim.246ee91c.js"></script>
-    <![endif]--> <script src="scripts/vendor.946716d3.js"></script> <script src="scripts/scripts.6dfa87bc.js"></script>  
+      loadFont(
+        'Tiempos Headline',
+        'https://www.barrons.com/fonts/woffs/tiempos/TiemposHeadline-Regular.woff',
+      );
+      loadFont(
+        'Aileron-Regular',
+        'https://www.barrons.com/fonts/woffs/aileron/Aileron-Regular.woff',
+      );
+      loadFont(
+        'Aileron-Bold',
+        'https://www.barrons.com/fonts/woffs/aileron/Aileron-Bold.woff',
+      );
+      loadFont('Graphik', './styles/fonts/graphik.css');
+    </script>
+    <body ng-app="cardkitApp">
+      <header id="header" class="top-header">
+
+        <span class="text">CardKit</span>
+        <nav id="nav">
+          <ul>
+            <li class="link">
+              <a class="button" ui-sref="big-number">Number</a>
+            </li>
+            <li class="link"><a class="button" ui-sref="stock">Stock</a></li>
+            <li class="link">
+              <a class="button" ui-sref="watermark">Watermark</a>
+            </li>
+            <li class="link">
+              <a class="button" ui-sref="afterthebell">After The Bell</a>
+            </li>
+            <li class="link">
+              <a class="button" ui-sref="barrons">Barron's</a>
+            </li>
+            <li class="link">
+              <a class="button" ui-sref="mansion-global">Mansion Global</a>
+            </li>
+            <li class="link">
+              <a class="button" ui-sref="marketwatch">MarketWatch</a>
+            </li>
+            <li class="link">
+              <a class="button" ui-sref="moneyish">Moneyish</a>
+            </li>
+            <li class="link"><a class="button" ui-sref="wsjpro">WSJ Pro</a></li>
+          </ul>
+        </nav>
+      </header>
+      <main id="body" class="container-wide">
+        <div ui-view class="row"></div>
+      </main>
+      <script src="scripts/vendor.946716d3.js"></script>
+      <script src="scripts/scripts.6dfa87bc.js"></script>
+    </body>
+  </head>
+</html>
