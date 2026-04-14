@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: cardkit
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cardkit-db
+          property: connectionString
+      # Set ANTHROPIC_API_KEY manually in the Render dashboard — do not add it here.
+      # Set ALLOWED_ORIGIN to your Render service URL once it is assigned.
+
+databases:
+  - name: cardkit-db
+    plan: free
+    databaseName: cardkit
+    user: cardkit

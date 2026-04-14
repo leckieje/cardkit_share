@@ -1,0 +1,21 @@
+{
+  "name": "cardkit-server",
+  "version": "1.0.0",
+  "description": "Backend server for CardKit project persistence and sharing",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch --watch-path=index.js --watch-path=routes --watch-path=db --watch-path=middleware index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "nanoid": "^3.3.7",
+    "pg": "^8.11.5"
+  }
+}
