@@ -2,7 +2,7 @@
 <html class="no-js">
   <head>
     <meta charset="utf-8" />
-    <title>CardKit</title>
+    <title>WSJ Pro CardKit</title>
     <link rel="shortcut icon" href="images/tool.ico" />
     <meta name="description" content="" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -17,6 +17,7 @@
     />
     <link rel="stylesheet" href="styles/vendor.6ed9dd91.css" />
     <link rel="stylesheet" href="styles/main.745e34f3.css" />
+    <link rel="stylesheet" href="styles/reskin.css" />
     <link
       href="https://fonts.googleapis.com/css?family=Lato"
       rel="stylesheet"
@@ -95,35 +96,12 @@
     </script>
     <body ng-app="cardkitApp">
       <header id="header" class="top-header">
-
-        <span class="text">CardKit</span>
+        <span class="text">WSJ Pro <span class="text-accent">CardKit</span></span>
         <nav id="nav">
           <ul>
+            <li class="link"><span class="nav-label">WSJ Pro Data</span></li>
             <li class="link">
-              <a class="button" ui-sref="big-number">Number</a>
-            </li>
-            <li class="link"><a class="button" ui-sref="stock">Stock</a></li>
-            <li class="link">
-              <a class="button" ui-sref="watermark">Watermark</a>
-            </li>
-            <li class="link">
-              <a class="button" ui-sref="afterthebell">After The Bell</a>
-            </li>
-            <li class="link">
-              <a class="button" ui-sref="barrons">Barron's</a>
-            </li>
-            <li class="link">
-              <a class="button" ui-sref="mansion-global">Mansion Global</a>
-            </li>
-            <li class="link">
-              <a class="button" ui-sref="marketwatch">MarketWatch</a>
-            </li>
-            <li class="link">
-              <a class="button" ui-sref="moneyish">Moneyish</a>
-            </li>
-            <li class="link"><a class="button" ui-sref="wsjpro">WSJ Pro</a></li>
-            <li class="link">
-              <button class="button" onclick="window.cardkitShim && window.cardkitShim.share()" style="cursor:pointer;background:none;border:none;font:inherit;padding:0">Share</button>
+              <button class="button" onclick="window.cardkitShim && window.cardkitShim.share()">Share</button>
             </li>
           </ul>
         </nav>

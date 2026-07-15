@@ -1,0 +1,906 @@
+/* CardKit WSJ Pro — Refined UI Reskin
+   Sharp, modern financial app aesthetic.
+   SVG card output is untouched. */
+
+:root {
+  --bg: #F8F9FA;
+  --surface: #FFFFFF;
+  --surface-2: #F1F3F5;
+  --border: #DEE2E6;
+  --border-hover: #9ca3af;
+  --accent: #2563EB;
+  --accent-hover: #1d4ed8;
+  --accent-bg: #EFF6FF;
+  --accent-ring: rgba(37, 99, 235, 0.1);
+  --text: #111827;
+  --text-2: #6B7280;
+  --green: #16A34A;
+  --red: #DC2626;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.04);
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --transition: 0.1s;
+}
+
+/* ── Page ──────────────────────────────────────────────── */
+
+body {
+  background: var(--bg) !important;
+  font-family: var(--font) !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: var(--text) !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+#body {
+  max-width: 1440px !important;
+  padding: 24px !important;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+
+#header,
+.top-header {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  padding: 0 24px !important;
+  height: 56px !important;
+  display: flex !important;
+  align-items: center !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow) !important;
+  transition: none !important;
+}
+
+#header .text {
+  color: var(--text) !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  font-family: var(--font) !important;
+  letter-spacing: -0.03em !important;
+  border-left: none !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  line-height: 1.2 !important;
+}
+
+#header .text .text-accent {
+  color: var(--accent) !important;
+  font-weight: 700 !important;
+}
+
+.nav-label {
+  color: #9ca3af !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  font-family: var(--font) !important;
+  cursor: default !important;
+  user-select: none !important;
+}
+
+#nav {
+  margin-left: auto !important;
+  position: static !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+#nav ul {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  list-style: none !important;
+}
+
+#nav ul li,
+#nav ul li.link {
+  list-style: none !important;
+  height: auto !important;
+  float: none !important;
+  display: flex !important;
+  align-items: center !important;
+  line-height: normal !important;
+  padding-top: 0 !important;
+  margin: 0 !important;
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+#nav ul li.link:hover,
+#nav ul li.link.active {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+#nav ul li.link button.button {
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  font-family: var(--font) !important;
+  padding: 5px 12px !important;
+  margin: 0 !important;
+  border: 1px solid var(--accent) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--accent) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  transition: background var(--transition), border-color var(--transition) !important;
+}
+
+#nav ul li.link button.button:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+
+/* ── Main content area ─────────────────────────────────── */
+
+.config-wrapper {
+  font-family: var(--font) !important;
+}
+
+/* ── Buttons ───────────────────────────────────────────── */
+
+.btn-primary {
+  background: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  color: #fff !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 6px 16px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  font-family: var(--font) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: background var(--transition), border-color var(--transition) !important;
+  cursor: pointer !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  color: #fff !important;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+.btn-success {
+  background: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  color: #fff !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 6px 16px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  font-family: var(--font) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: background var(--transition), border-color var(--transition) !important;
+  cursor: pointer !important;
+}
+
+.btn-success:hover,
+.btn-success:focus {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  color: #fff !important;
+}
+
+.btn-success:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+.btn-default {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-2) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 5px 12px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  font-family: var(--font) !important;
+  transition: background var(--transition), border-color var(--transition), color var(--transition) !important;
+  cursor: pointer !important;
+}
+
+.btn-default:hover {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border-hover) !important;
+}
+
+.btn-sm {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
+.btn-xs {
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+}
+
+.btn-danger {
+  background: var(--red) !important;
+  border: 1px solid var(--red) !important;
+  color: #fff !important;
+  border-radius: var(--radius-sm) !important;
+  transition: background var(--transition) !important;
+}
+
+.btn-danger:hover {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+}
+
+/* ── Form controls ─────────────────────────────────────── */
+
+.form-control {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 13px !important;
+  font-family: var(--font) !important;
+  color: var(--text) !important;
+  padding: 6px 10px !important;
+  transition: border-color var(--transition) !important;
+  outline: none !important;
+}
+
+.form-control:hover {
+  border-color: var(--border-hover) !important;
+}
+
+.form-control:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-ring) !important;
+  outline: none !important;
+}
+
+textarea.form-control {
+  border-radius: var(--radius-sm) !important;
+  min-height: 60px !important;
+  resize: vertical !important;
+}
+
+select.form-control,
+select {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 12px !important;
+  padding: 5px 10px !important;
+  font-family: var(--font) !important;
+  color: var(--text) !important;
+  background: var(--surface) !important;
+  transition: border-color var(--transition) !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
+
+select.form-control:hover,
+select:hover {
+  border-color: var(--border-hover) !important;
+}
+
+select.form-control:focus,
+select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-ring) !important;
+  outline: none !important;
+}
+
+/* ── Right sidebar ─────────────────────────────────────── */
+
+aside.elements {
+  border-left: none !important;
+  font-family: var(--font) !important;
+  padding: 16px 0 24px 12px !important;
+  position: fixed !important;
+  top: 56px !important;
+  right: 0 !important;
+  height: calc(100vh - 56px) !important;
+  width: 25% !important;
+  overflow-y: auto !important;
+}
+
+aside.elements .panel {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-top: 1px solid var(--border) !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  box-shadow: var(--shadow) !important;
+}
+
+aside.elements .panel h3 {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--text-2) !important;
+  margin: 0 0 10px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  font-family: var(--font) !important;
+  cursor: pointer !important;
+  line-height: 1.2 !important;
+}
+
+aside.elements .panel h3 .glyphicon {
+  font-size: 8px !important;
+  margin-right: 4px !important;
+  color: var(--text-2) !important;
+}
+
+/* Button group in sidebar (theme/size selectors) */
+aside.elements .btn-group {
+  display: flex !important;
+  gap: 4px !important;
+  flex-wrap: wrap !important;
+}
+
+aside.elements .btn-group .btn {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-2) !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 5px 12px !important;
+  font-family: var(--font) !important;
+  transition: background var(--transition), border-color var(--transition), color var(--transition) !important;
+}
+
+aside.elements .btn-group .btn:hover {
+  background: var(--accent-bg) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+aside.elements .btn-group .btn.active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* Labels in sidebar */
+aside.elements label {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--text-2) !important;
+  font-family: var(--font) !important;
+}
+
+/* Range inputs */
+aside.elements input[type="range"] {
+  width: 100% !important;
+  accent-color: var(--accent) !important;
+  height: 4px !important;
+  cursor: pointer !important;
+}
+
+/* Footnotes in sidebar */
+aside.elements .footnote {
+  font-size: 10px !important;
+  color: var(--text-2) !important;
+}
+
+/* Checkbox styling */
+aside.elements input[type="checkbox"] {
+  accent-color: var(--accent) !important;
+  cursor: pointer !important;
+}
+
+/* Number inputs in custom size */
+aside.elements input[type="number"] {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  font-family: var(--font) !important;
+  font-variant-numeric: tabular-nums !important;
+  width: 80px !important;
+  transition: border-color var(--transition) !important;
+  outline: none !important;
+}
+
+aside.elements input[type="number"]:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-ring) !important;
+}
+
+/* ── Stats controls ────────────────────────────────────── */
+
+#ck-stats-controls {
+  font-family: var(--font) !important;
+  color: var(--text) !important;
+  font-size: 12px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 12px 16px !important;
+  box-shadow: var(--shadow) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+#ck-stats-controls label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--text) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+#ck-stats-controls input[type="radio"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 14px !important;
+  height: 14px !important;
+  border: 2px solid var(--border) !important;
+  border-radius: 50% !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  transition: border-color var(--transition), background var(--transition) !important;
+  flex-shrink: 0 !important;
+}
+
+#ck-stats-controls input[type="radio"]:checked {
+  border-color: var(--accent) !important;
+  background: var(--accent) !important;
+  box-shadow: inset 0 0 0 2px #fff !important;
+}
+
+#ck-stats-controls select {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 5px 10px !important;
+  font-size: 12px !important;
+  font-family: var(--font) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  transition: border-color var(--transition) !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
+
+#ck-stats-controls select:hover {
+  border-color: var(--border-hover) !important;
+}
+
+#ck-stats-controls select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-ring) !important;
+}
+
+/* ── Stats summary card ────────────────────────────────── */
+
+#ck-stats-summary {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 16px !important;
+  font-family: var(--font) !important;
+  font-size: 13px !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow) !important;
+  line-height: 1.6 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#ck-stats-summary strong {
+  font-weight: 600 !important;
+  color: var(--text) !important;
+}
+
+/* ── Chat area ─────────────────────────────────────────── */
+
+#ck-ai-chat {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 16px !important;
+  box-shadow: var(--shadow) !important;
+  font-family: var(--font) !important;
+}
+
+#ck-ai-chat strong {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--text-2) !important;
+  display: block !important;
+  margin-bottom: 8px !important;
+}
+
+#ck-chat-messages {
+  font-family: var(--font) !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+#ck-chat-messages > div {
+  max-width: 88% !important;
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  white-space: pre-wrap !important;
+}
+
+#ck-chat-input {
+  font-size: 13px !important;
+  font-family: var(--font) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 8px 12px !important;
+  transition: border-color var(--transition) !important;
+  outline: none !important;
+}
+
+#ck-chat-input:hover {
+  border-color: var(--border-hover) !important;
+}
+
+#ck-chat-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-ring) !important;
+  outline: none !important;
+}
+
+#ck-chat-send {
+  background: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  color: #fff !important;
+  border-radius: var(--radius-sm) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  padding: 6px 14px !important;
+  transition: background var(--transition) !important;
+  cursor: pointer !important;
+}
+
+#ck-chat-send:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+
+/* ── Data table ────────────────────────────────────────── */
+
+#ck-table-wrapper {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow) !important;
+  background: var(--surface) !important;
+}
+
+#ck-table-wrapper table {
+  font-family: var(--font) !important;
+  border-collapse: collapse !important;
+  width: 100% !important;
+}
+
+#ck-table-wrapper thead th {
+  background: var(--surface-2) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--text-2) !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-right: none !important;
+  border-left: none !important;
+  padding: 10px 8px !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  white-space: nowrap !important;
+}
+
+#ck-table-wrapper tbody {
+  font-variant-numeric: tabular-nums !important;
+}
+
+#ck-table-wrapper tbody td {
+  border-bottom: 1px solid var(--border) !important;
+  border-right: none !important;
+  border-left: none !important;
+  padding: 8px 8px !important;
+  font-size: 12px !important;
+  color: var(--text) !important;
+  transition: background var(--transition) !important;
+}
+
+#ck-table-wrapper tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+#ck-table-wrapper tbody tr:hover td {
+  background: var(--accent-bg) !important;
+}
+
+#ck-table-wrapper a {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+}
+
+#ck-table-wrapper a:hover {
+  text-decoration: underline !important;
+  color: var(--accent-hover) !important;
+}
+
+/* ── Pagination ────────────────────────────────────────── */
+
+#ck-table-pagination {
+  font-family: var(--font) !important;
+  font-size: 12px !important;
+  color: var(--text-2) !important;
+  padding: 8px 0 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* ── Alerts ────────────────────────────────────────────── */
+
+.alert-warning {
+  background: #FFFBEB !important;
+  border: 1px solid #FDE68A !important;
+  border-left: 3px solid #F59E0B !important;
+  color: #92400E !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  font-family: var(--font) !important;
+  box-shadow: none !important;
+}
+
+.alert-danger {
+  background: #FEF2F2 !important;
+  border: 1px solid #FECACA !important;
+  border-left: 3px solid var(--red) !important;
+  color: #991B1B !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  font-family: var(--font) !important;
+  box-shadow: none !important;
+}
+
+/* ── File name input ───────────────────────────────────── */
+
+.config-wrapper .form-inline label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--text-2) !important;
+  font-family: var(--font) !important;
+  margin-bottom: 4px !important;
+}
+
+.config-wrapper .input-group {
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden !important;
+}
+
+.config-wrapper .input-group .form-control {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm) !important;
+}
+
+.config-wrapper .input-group .input-group-addon {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border) !important;
+  border-left: none !important;
+  color: var(--text-2) !important;
+  font-size: 12px !important;
+  font-family: var(--font) !important;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
+}
+
+/* ── Loading / status ──────────────────────────────────── */
+
+#ck-table-status,
+#ck-ai-autocard-status {
+  font-family: var(--font) !important;
+  font-size: 12px !important;
+}
+
+@keyframes ck-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Footnote / helper text ────────────────────────────── */
+
+.footnote {
+  font-family: var(--font) !important;
+  color: var(--text-2) !important;
+  font-size: 11px !important;
+}
+
+p.footnote .glyphicon {
+  color: var(--text-2) !important;
+  font-size: 10px !important;
+}
+
+/* ── Footer ────────────────────────────────────────────── */
+
+footer {
+  display: none !important;
+  position: static !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+footer.hidden-footer {
+  font-family: var(--font) !important;
+  color: var(--text-2) !important;
+  border-top: 1px solid var(--border) !important;
+  margin-top: 32px !important;
+  padding-top: 16px !important;
+  font-size: 12px !important;
+}
+
+footer a {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+}
+
+footer a:hover {
+  text-decoration: underline !important;
+  color: var(--accent-hover) !important;
+}
+
+/* ── Image editor / dropzone ───────────────────────────── */
+
+/* Hide dragLock checkboxes */
+[ng-switch-when="dragLockX"],
+[ng-switch-when="dragLockY"] {
+  display: none !important;
+}
+
+/* Dropzone layout */
+.dropzone {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  height: 110px !important;
+  border: 2px dashed var(--border) !important;
+  border-radius: var(--radius) !important;
+  background: var(--surface-2) !important;
+  position: relative !important;
+}
+
+/* Replace "Drop your image here" placeholder text */
+.dropzone::before {
+  content: 'Drop image here' !important;
+  font-size: 12px !important;
+  color: var(--text-2) !important;
+  position: static !important;
+  font-family: var(--font) !important;
+}
+
+/* Center and restyle the "or select an image" button */
+.fileInputWrapper {
+  position: static !important;
+  width: auto !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+.fileInputWrapper .button {
+  font-size: 12px !important;
+  padding: 5px 14px !important;
+  border-radius: var(--radius-sm) !important;
+  margin: 0 !important;
+  background: var(--accent) !important;
+  font-family: var(--font) !important;
+}
+
+.fileInputWrapper .button:hover {
+  background: var(--accent-hover) !important;
+}
+
+/* ── SVG area protection ─────────────────────────────────
+   Do NOT restyle anything inside the card preview.
+   The .svg-wrapper contains the actual card output. */
+
+.svg-wrapper,
+.svg-wrapper * {
+  font-family: inherit;
+}
+
+/* ── Scale panel (left side) ───────────────────────────── */
+
+.config-wrapper > .panel {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 16px !important;
+  box-shadow: var(--shadow) !important;
+  margin-bottom: 16px !important;
+}
+
+.config-wrapper .panel h3 {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--text-2) !important;
+  font-family: var(--font) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+/* ── Hide icons in Download/AI buttons ─────────────────── */
+
+.btn-primary .glyphicon-floppy-save,
+.btn-success .glyphicon-flash,
+.footnote .glyphicon-move {
+  display: none !important;
+}
+
+/* ── Glyphicon refinements ─────────────────────────────── */
+
+.glyphicon {
+  font-size: 12px !important;
+}
+
+.btn .glyphicon {
+  font-size: 11px !important;
+}
+
+/* ── Sheet table container spacing ─────────────────────── */
+
+#ck-sheets-table-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+#ck-sheets-table-container > div {
+  margin-bottom: 0 !important;
+}
+
+/* ── Table status ──────────────────────────────────────── */
+
+#ck-table-status {
+  color: var(--text-2) !important;
+}

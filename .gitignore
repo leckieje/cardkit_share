@@ -1,2 +1,5 @@
 server/node_modules/
 server/.env
+sheets-service/.env
+sheets-service/.venv
+__pycache__/
