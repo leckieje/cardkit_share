@@ -84,6 +84,45 @@ Global library of ~40 named themes used by views that offer a theme picker. Each
 
 `php/makeImages.php` receives POSTed SVG data, saves it temporarily, and forwards it to the Magnolia GAMS API (`graphicstools.dowjones.net`). `php/testMagnolia.php` is a stub for testing that integration.
 
+## Git Remotes & Pushing Code
+
+This repo has two remotes:
+- `origin` — internal DJ GitHub (github.dowjones.net, requires VPN — often unreachable)
+- `github` — personal GitHub at https://github.com/leckieje/cardkit_share.git
+
+**Always push to the personal remote:**
+```bash
+git push github master
+```
+
+## Deploying to Cloud Run
+
+The app runs on Cloud Run in GCP project `dj-newsrm-stag-aiml`.
+
+**Live URL:** https://cardkit-wsjpro-673850123387.us-central1.run.app
+
+**Deploy command** (builds remotely via Cloud Build, then deploys):
+```bash
+cp -r ../google-sheets ./google-sheets && \
+gcloud run deploy cardkit-wsjpro \
+  --source . \
+  --region=us-central1 \
+  --project=dj-newsrm-stag-aiml ; \
+rm -rf ./google-sheets
+```
+
+The `google-sheets/` sibling directory must exist at `../google-sheets` — it's copied into the build context temporarily then cleaned up.
+
+Do NOT use `deploy.sh` in the repo root — it attempts a local Docker push and will fail on permissions.
+
+## Running Locally (Full Stack)
+
+```bash
+./start.sh
+```
+
+This starts the Node/Express server (port 3001) which serves the static app and proxies to the Flask sheets-service (port 5050). The sheets-service requires a `.env` with GCP credentials.
+
 ## Adding or Modifying a Mode
 
 1. Create `modes/<name>.config.json` following an existing config as a template

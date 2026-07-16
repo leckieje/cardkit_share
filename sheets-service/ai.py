@@ -1086,12 +1086,26 @@ def chat():
 
     # Try to extract a time period from the question and send relevant rows
     from datetime import datetime
+    import re as _re
     period_year, period_month, period_half, period_quarter = extract_period_from_question(question)
     period_rows = None
     if period_quarter and period_year:
         period_rows = filter_rows_by_quarter(rows, period_year, period_quarter)
     elif period_month and period_year:
         period_rows = filter_rows_by_period(rows, period_year, period_month, period_half or "full")
+
+    # Detect comparison period (vs, compared to, year over year, or two years mentioned)
+    compare_rows = None
+    q_lower = question.lower()
+    is_comparison = bool(_re.search(r'\b(vs\.?|versus|compared?\s+to|year.over.year|yoy|y/y)\b', q_lower))
+    if not is_comparison:
+        years_in_q = _re.findall(r'\b(20\d{2})\b', question)
+        if len(set(years_in_q)) >= 2:
+            is_comparison = True
+    if is_comparison and period_month and period_year:
+        compare_rows = filter_rows_by_period(rows, period_year - 1, period_month, period_half or "full")
+    elif is_comparison and period_quarter and period_year:
+        compare_rows = filter_rows_by_quarter(rows, period_year - 1, period_quarter)
 
     # Extract entity filters (firm, platform, sector, etc.) from the question
     entity_filters = extract_entities_from_question(question, rows)
@@ -1103,7 +1117,9 @@ def chat():
             period_year, period_month, period_half or "full"
         )
         entity_desc = ", ".join(f"col{k}={v}" for k, v in entity_filters.items())
-        ctx += f"\n\n=== TARGETED ROWS FOR QUERY ({len(targeted)} rows matching: {entity_desc}) ===\n"
+        # Pre-compute unique deal count so the AI doesn't have to count
+        targeted_deals = set(str(r[1]) for r in targeted if len(r) > 1 and r[1])
+        ctx += f"\n\n=== TARGETED ROWS FOR QUERY ({len(targeted)} rows, {len(targeted_deals)} unique deals, matching: {entity_desc}) ===\n"
         for row in targeted:
             ctx += json.dumps(row, ensure_ascii=False) + "\n"
         if discrepancy_note:
@@ -1114,10 +1130,24 @@ def chat():
         for row in period_rows:
             if id(row) not in targeted_set:
                 ctx += json.dumps(row, ensure_ascii=False) + "\n"
+        # Include comparison period rows filtered by same entities
+        if compare_rows:
+            compare_targeted = [r for r in compare_rows
+                                if all(str(r[k] if k < len(r) else "").strip() == v for k, v in entity_filters.items())]
+            compare_deals = set(str(r[1]) for r in compare_targeted if len(r) > 1 and r[1])
+            ctx += f"\n=== COMPARISON PERIOD ROWS ({len(compare_targeted)} rows, {len(compare_deals)} unique deals, same entity, prior year) ===\n"
+            for row in compare_targeted:
+                ctx += json.dumps(row, ensure_ascii=False) + "\n"
     elif period_rows:
-        ctx += f"\n\n=== ALL ROWS FOR REQUESTED PERIOD ({len(period_rows)} rows) ===\n"
+        period_deals = set(str(r[1]) for r in period_rows if len(r) > 1 and r[1])
+        ctx += f"\n\n=== ALL ROWS FOR REQUESTED PERIOD ({len(period_rows)} rows, {len(period_deals)} unique deals) ===\n"
         for row in period_rows:
             ctx += json.dumps(row, ensure_ascii=False) + "\n"
+        if compare_rows:
+            compare_deals = set(str(r[1]) for r in compare_rows if len(r) > 1 and r[1])
+            ctx += f"\n=== COMPARISON PERIOD ROWS ({len(compare_rows)} rows, {len(compare_deals)} unique deals, prior year same period) ===\n"
+            for row in compare_rows:
+                ctx += json.dumps(row, ensure_ascii=False) + "\n"
     else:
         ctx += f"\n\n=== SAMPLE RAW DATA (most recent {sample_limit} rows) ===\n"
         dated_rows = []
@@ -1140,10 +1170,12 @@ def chat():
     if period_rows and entity_filters:
         period_note = """- The "TARGETED ROWS FOR QUERY" section contains ALL rows matching the entity and period you asked about. This is COMPLETE data, not a sample.
 - List EVERY row in the targeted section when answering. Do not say data is missing if rows appear there.
-- The "ALL OTHER ROWS IN PERIOD" section has the remaining deals in the same time period for broader context."""
+- The "ALL OTHER ROWS IN PERIOD" section has the remaining deals in the same time period for broader context.
+- If a "COMPARISON PERIOD ROWS" section exists, it contains ALL rows for the same entity in the prior year's equivalent period. Use it to calculate year-over-year changes."""
     elif period_rows:
         period_note = """- The "ALL ROWS FOR REQUESTED PERIOD" section contains EVERY row for that time period — it is complete, not a sample.
-- When answering about that period, search through ALL provided period rows carefully. Do not say data is missing if it appears in those rows."""
+- When answering about that period, search through ALL provided period rows carefully. Do not say data is missing if it appears in those rows.
+- If a "COMPARISON PERIOD ROWS" section exists, it contains ALL rows for the prior year's equivalent period. Use it to calculate year-over-year changes."""
 
     system_prompt = f"""You are a data analyst for WSJ Pro, answering questions about the Add-On Deals database.
 
@@ -1151,7 +1183,10 @@ Rules:
 - ONLY answer based on the aggregated statistics and sample data provided below. Do NOT use outside knowledge.
 - If the data doesn't contain enough information to answer, say so clearly.
 - Do NOT hallucinate facts or numbers. Every number you cite must come from the aggregates or sample data.
-- Deal Code is unique per deal. Multiple rows with the same Deal Code = multiple PE firms in one deal.
+- Deal Code (column 1) is unique per deal. Multiple rows with the same Deal Code = multiple PE firms participating in ONE deal.
+- CRITICAL: When counting deals, ALWAYS count UNIQUE Deal Codes, never rows. Example: if 3 rows share Deal Code 18559, that is 1 deal with 3 participating firms.
+- The section headers include pre-computed unique deal counts (e.g. "19 rows, 15 unique deals"). ALWAYS use these pre-computed counts as your answer for "how many deals" questions — do not recount manually.
+- When listing firms and their deal counts, count how many unique Deal Codes each firm appears in.
 - The aggregates below are computed from ALL {total_rows} rows in the database. Use them for counts and rankings.
 - Column "Updated WSJ Name" (index 5) is the PE firm name.
 - Column "Platform Co." (index 9) is the platform company.
@@ -1159,6 +1194,7 @@ Rules:
 - Column "Sector" (index 11) is the industry.
 - Column 0 is the date in MM/DD/YYYY format.
 - Be concise but thorough. Use specific numbers.
+- NEVER dump raw row data in your response. Summarize findings in readable prose or bullet points.
 {period_note}
 
 {ctx}{verify_ctx}"""
