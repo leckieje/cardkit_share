@@ -628,7 +628,8 @@
 
   var DEFAULT_SPREADSHEET = '1q_Cbi9mF2mPYCcgeihes7uxQ1lw3Iq67RFznZuwUz0w';
   var DEFAULT_SHEET = 'RESULT_ADDONS';
-  var PAGE_SIZE = 50;
+  var PAGE_SIZE = 10;
+  var pageSize = 10;
 
   // Column indices from the raw sheet (0-based): a=0, Deal Code=1, Updated WSJ PE Firm Name=5, Platform Co.=9, Co. Acquire=10, Sector=11, Story URL=12
   var DISPLAY_COLUMNS = [
@@ -672,7 +673,7 @@
         tableData.rows = data.rows || [];
         sortByDateDesc();
         currentPage = 0;
-        if (statusEl) statusEl.textContent = tableData.rows.length + ' rows loaded (recent). Loading full dataset…';
+        if (statusEl) statusEl.textContent = fmtNum(tableData.rows.length) + ' rows loaded (recent). Loading full dataset…';
         initStats();
         renderTable();
 
@@ -688,9 +689,10 @@
         tableData.rows = data.rows || [];
         sortByDateDesc();
         currentPage = 0;
-        if (statusEl) statusEl.textContent = tableData.rows.length + ' rows loaded.';
+        if (statusEl) statusEl.textContent = fmtNum(tableData.rows.length) + ' rows loaded.';
         initStats();
-        renderTable();
+        initFilters();
+        getFilteredRows();
         var updatedEl = document.getElementById('ck-table-updated');
         if (updatedEl && data.synced_at) {
           var d = new Date(data.synced_at);
@@ -1258,15 +1260,33 @@
     var container = document.getElementById('ck-table-wrapper');
     if (!container) return;
 
-    var start = currentPage * PAGE_SIZE;
-    var end = Math.min(start + PAGE_SIZE, tableData.sortedRows.length);
+    var start = currentPage * pageSize;
+    var end = Math.min(start + pageSize, tableData.sortedRows.length);
     var pageRows = tableData.sortedRows.slice(start, end);
+
+    var allFiltered = tableData.sortedRows;
+    var uniqueCounts = {};
+    var countCols = {1: 'deals', 5: 'firms', 9: 'platforms', 10: 'acquires', 11: 'sectors'};
+    Object.keys(countCols).forEach(function (idx) {
+      var s = {};
+      allFiltered.forEach(function (row) {
+        var v = String(row[parseInt(idx)] || '').trim();
+        if (v) s[v] = true;
+      });
+      uniqueCounts[parseInt(idx)] = Object.keys(s).length;
+    });
+
+    var countEl = document.getElementById('ck-filter-count');
+    if (countEl) {
+      countEl.textContent = fmtNum(allFiltered.length) + ' entries';
+    }
 
     var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">';
     html += '<thead><tr>';
     DISPLAY_COLUMNS.forEach(function (col) {
+      var countStr = (uniqueCounts[col.idx] !== undefined) ? ' (' + fmtNum(uniqueCounts[col.idx]) + ')' : '';
       html += '<th style="border:1px solid #ddd;padding:3px 5px;background:#f5f5f5;white-space:nowrap;position:sticky;top:0">' +
-              escapeHtml(col.label) + '</th>';
+              escapeHtml(col.label) + '<span style="color:#999;font-weight:normal">' + countStr + '</span></th>';
     });
     html += '</tr></thead><tbody>';
 
@@ -1300,18 +1320,20 @@
     var pagEl = document.getElementById('ck-table-pagination');
     if (!pagEl) return;
 
-    var totalPages = Math.ceil(tableData.sortedRows.length / PAGE_SIZE);
+    var totalPages = Math.ceil(tableData.sortedRows.length / pageSize);
     if (totalPages <= 1) {
       pagEl.innerHTML = '';
       return;
     }
 
+    var start = currentPage * pageSize + 1;
+    var end = Math.min((currentPage + 1) * pageSize, tableData.sortedRows.length);
     var html = '';
     if (currentPage > 0) {
       html += '<button class="btn btn-xs btn-default" id="ck-page-prev">← Prev</button> ';
     }
-    html += 'Page ' + (currentPage + 1) + ' of ' + totalPages +
-            ' (' + tableData.sortedRows.length + ' rows) ';
+    html += 'Page ' + fmtNum(currentPage + 1) + ' of ' + fmtNum(totalPages) +
+            ' (' + fmtNum(start) + '-' + fmtNum(end) + ' / ' + fmtNum(tableData.sortedRows.length) + ') ';
     if (currentPage < totalPages - 1) {
       html += '<button class="btn btn-xs btn-default" id="ck-page-next">Next →</button>';
     }
@@ -1323,10 +1345,205 @@
     if (nextBtn) nextBtn.addEventListener('click', function () { currentPage++; renderTable(); });
   }
 
+  function fmtNum(n) {
+    return n.toLocaleString();
+  }
+
   function escapeHtml(str) {
     var div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // ── Table Filters ─────────────────────────────────────────────────────────
+
+  var filterDebounceTimer = null;
+
+  function getFilteredRows() {
+    var rows = tableData.rows;
+
+    var searchEl = document.getElementById('ck-filter-search');
+    var dateFromEl = document.getElementById('ck-filter-date-from');
+    var dateToEl = document.getElementById('ck-filter-date-to');
+    var firmEl = document.getElementById('ck-filter-firm');
+    var sectorEl = document.getElementById('ck-filter-sector');
+    var platformEl = document.getElementById('ck-filter-platform');
+
+    var search = searchEl ? searchEl.value.trim().toLowerCase() : '';
+    var dateFrom = dateFromEl ? dateFromEl.value : '';
+    var dateTo = dateToEl ? dateToEl.value : '';
+    var firm = firmEl ? firmEl.value : '';
+    var sector = sectorEl ? sectorEl.value : '';
+    var platform = platformEl ? platformEl.value : '';
+
+    var dateFromParts = dateFrom ? dateFrom.split('-') : null;
+    var dateToParts = dateTo ? dateTo.split('-') : null;
+    var dateFromNum = dateFromParts ? parseInt(dateFromParts[0]) * 10000 + parseInt(dateFromParts[1]) * 100 + parseInt(dateFromParts[2]) : null;
+    var dateToNum = dateToParts ? parseInt(dateToParts[0]) * 10000 + parseInt(dateToParts[1]) * 100 + parseInt(dateToParts[2]) : null;
+
+    function passesBase(row) {
+      if (dateFromNum || dateToNum) {
+        var parts = String(row[0] || '').split('/');
+        if (parts.length !== 3) return false;
+        var rowNum = parseInt(parts[2]) * 10000 + parseInt(parts[0]) * 100 + parseInt(parts[1]);
+        if (dateFromNum && rowNum < dateFromNum) return false;
+        if (dateToNum && rowNum > dateToNum) return false;
+      }
+      if (search) {
+        var match = false;
+        for (var i = 0; i < DISPLAY_COLUMNS.length; i++) {
+          var val = String(row[DISPLAY_COLUMNS[i].idx] || '').toLowerCase();
+          if (val.indexOf(search) !== -1) { match = true; break; }
+        }
+        if (!match) return false;
+      }
+      return true;
+    }
+
+    var hasAnyFilter = dateFrom || dateTo || search || firm || sector || platform;
+    if (hasAnyFilter) {
+      var availFirms = {}, availSectors = {}, availPlatforms = {};
+      rows.forEach(function (row) {
+        if (!passesBase(row)) return;
+        var f = String(row[5] || '').trim();
+        var s = String(row[11] || '').trim();
+        var p = String(row[9] || '').trim();
+        if ((!sector || s === sector) && (!platform || p === platform) && f) availFirms[f] = true;
+        if ((!firm || f === firm) && (!platform || p === platform) && s) availSectors[s] = true;
+        if ((!firm || f === firm) && (!sector || s === sector) && p) availPlatforms[p] = true;
+      });
+      updateDropdownOptions(firmEl, availFirms, firm, 'All Firms');
+      updateDropdownOptions(sectorEl, availSectors, sector, 'All Sectors');
+      updateDropdownOptions(platformEl, availPlatforms, platform, 'All Platforms');
+    } else {
+      repopulateAllDropdowns();
+    }
+
+    var filtered = rows.filter(function (row) {
+      if (!passesBase(row)) return false;
+      if (firm && String(row[5] || '').trim() !== firm) return false;
+      if (sector && String(row[11] || '').trim() !== sector) return false;
+      if (platform && String(row[9] || '').trim() !== platform) return false;
+      return true;
+    });
+
+    filtered.sort(function (a, b) {
+      var aDate = new Date(a[0] || '');
+      var bDate = new Date(b[0] || '');
+      if (!isNaN(aDate) && !isNaN(bDate)) return bDate - aDate;
+      return 0;
+    });
+
+    tableData.sortedRows = filtered;
+    currentPage = 0;
+    renderTable();
+  }
+
+  function updateDropdownOptions(sel, available, currentVal, allLabel) {
+    if (!sel) return;
+    var opts = '<option value="">' + allLabel + '</option>';
+    Object.keys(available).sort().forEach(function (v) {
+      opts += '<option value="' + escapeHtml(v) + '"' + (v === currentVal ? ' selected' : '') + '>' + escapeHtml(v) + '</option>';
+    });
+    sel.innerHTML = opts;
+  }
+
+  function repopulateAllDropdowns() {
+    var firms = {}, sectors = {}, platforms = {};
+    tableData.rows.forEach(function (row) {
+      var f = String(row[5] || '').trim();
+      var s = String(row[11] || '').trim();
+      var p = String(row[9] || '').trim();
+      if (f) firms[f] = true;
+      if (s) sectors[s] = true;
+      if (p) platforms[p] = true;
+    });
+    updateDropdownOptions(document.getElementById('ck-filter-firm'), firms, '', 'All Firms');
+    updateDropdownOptions(document.getElementById('ck-filter-sector'), sectors, '', 'All Sectors');
+    updateDropdownOptions(document.getElementById('ck-filter-platform'), platforms, '', 'All Platforms');
+  }
+
+  function initFilters() {
+    var filtersEl = document.getElementById('ck-table-filters');
+    if (!filtersEl) return;
+    filtersEl.style.display = '';
+
+    var firms = {}, sectors = {}, platforms = {};
+    tableData.rows.forEach(function (row) {
+      var f = String(row[5] || '').trim();
+      var s = String(row[11] || '').trim();
+      var p = String(row[9] || '').trim();
+      if (f) firms[f] = true;
+      if (s) sectors[s] = true;
+      if (p) platforms[p] = true;
+    });
+
+    function populateSelect(id, values, allLabel) {
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = '<option value="">' + allLabel + '</option>';
+      values.sort().forEach(function (v) {
+        var opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        sel.appendChild(opt);
+      });
+    }
+
+    populateSelect('ck-filter-firm', Object.keys(firms), 'All Firms');
+    populateSelect('ck-filter-sector', Object.keys(sectors), 'All Sectors');
+    populateSelect('ck-filter-platform', Object.keys(platforms), 'All Platforms');
+
+    var searchEl = document.getElementById('ck-filter-search');
+    if (searchEl) {
+      searchEl.addEventListener('input', function () {
+        clearTimeout(filterDebounceTimer);
+        filterDebounceTimer = setTimeout(getFilteredRows, 300);
+      });
+    }
+
+    ['ck-filter-date-from', 'ck-filter-date-to'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', getFilteredRows);
+        el.addEventListener('input', getFilteredRows);
+      }
+    });
+    ['ck-filter-firm', 'ck-filter-sector', 'ck-filter-platform'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', getFilteredRows);
+    });
+
+    var pageSizeEl = document.getElementById('ck-filter-pagesize');
+    if (pageSizeEl) {
+      pageSizeEl.addEventListener('change', function () {
+        var val = pageSizeEl.value;
+        pageSize = (val === 'all') ? tableData.sortedRows.length || tableData.rows.length : parseInt(val, 10);
+        currentPage = 0;
+        renderTable();
+      });
+    }
+
+    var clearBtn = document.getElementById('ck-filter-clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        if (searchEl) searchEl.value = '';
+        var dateFromEl = document.getElementById('ck-filter-date-from');
+        var dateToEl = document.getElementById('ck-filter-date-to');
+        var firmEl = document.getElementById('ck-filter-firm');
+        var sectorEl = document.getElementById('ck-filter-sector');
+        var platformEl = document.getElementById('ck-filter-platform');
+        if (dateFromEl) dateFromEl.value = '';
+        if (dateToEl) dateToEl.value = '';
+        if (firmEl) firmEl.value = '';
+        if (sectorEl) sectorEl.value = '';
+        if (platformEl) platformEl.value = '';
+        var pageSizeEl = document.getElementById('ck-filter-pagesize');
+        if (pageSizeEl) pageSizeEl.value = '10';
+        pageSize = 10;
+        getFilteredRows();
+      });
+    }
   }
 
   // ── AI Features ──────────────────────────────────────────────────────────

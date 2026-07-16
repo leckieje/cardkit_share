@@ -85,6 +85,159 @@ def filter_rows_by_quarter(rows, year, quarter):
     return filtered
 
 
+def extract_period_from_question(question):
+    """Parse a time period from a natural-language question. Returns (year, month, half, quarter) or Nones."""
+    import re
+    from datetime import datetime
+
+    q = question.lower()
+    now = datetime.now()
+
+    month_names = {
+        "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+        "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6,
+        "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+    }
+
+    # Detect quarter (e.g. "Q1 2025", "first quarter 2025")
+    quarter_match = re.search(r'\bq([1-4])\s*(\d{4})?\b', q)
+    if not quarter_match:
+        quarter_words = {"first": 1, "second": 2, "third": 3, "fourth": 4}
+        qw_match = re.search(r'\b(first|second|third|fourth)\s+quarter\b', q)
+        if qw_match:
+            quarter_num = quarter_words[qw_match.group(1)]
+            year_match = re.search(r'\b(20\d{2})\b', q)
+            year = int(year_match.group(1)) if year_match else now.year
+            return (year, None, None, quarter_num)
+    else:
+        quarter_num = int(quarter_match.group(1))
+        year = int(quarter_match.group(2)) if quarter_match.group(2) else now.year
+        return (year, None, None, quarter_num)
+
+    # Detect month
+    month = None
+    for name, num in month_names.items():
+        if re.search(r'\b' + name + r'\b', q):
+            month = num
+            break
+
+    if not month:
+        return (None, None, None, None)
+
+    # Detect year
+    year_match = re.search(r'\b(20\d{2})\b', q)
+    year = int(year_match.group(1)) if year_match else now.year
+
+    # Detect half
+    half = "full"
+    if re.search(r'\b(first\s+half|1st\s+half|first\s+15|days?\s*1.?15)\b', q):
+        half = "first"
+    elif re.search(r'\b(second\s+half|2nd\s+half|last\s+half|days?\s*16.?3[01])\b', q):
+        half = "second"
+
+    return (year, month, half, None)
+
+
+def extract_entities_from_question(question, rows):
+    """Extract firm, platform, sector, or acquire company mentioned in the question.
+    Returns dict with matched column filters: {col_idx: value}."""
+    import re
+    q_lower = question.lower()
+
+    # Words that commonly appear in questions but shouldn't match entity names
+    stop_words = {"first", "second", "third", "fourth", "last", "half", "full",
+                  "quarter", "month", "year", "deals", "deal", "show", "me",
+                  "the", "in", "by", "for", "of", "and", "all", "how", "many",
+                  "what", "which", "who", "done", "made", "did", "do", "from",
+                  "to", "with", "about", "most", "top", "recent", "new"}
+
+    # Build lookup sets from unique values in the data
+    col_map = {5: set(), 9: set(), 10: set(), 11: set()}
+    for row in rows:
+        for col_idx in col_map:
+            val = str(row[col_idx]).strip() if len(row) > col_idx and row[col_idx] else ""
+            if val:
+                col_map[col_idx].add(val)
+
+    matches = {}
+    for col_idx, values in col_map.items():
+        # Only consider values with at least 4 chars and not a stop word
+        candidates = [v for v in values if len(v) >= 4 and v.lower() not in stop_words]
+        # Sort by length descending to prioritize longer (more specific) matches
+        candidates.sort(key=len, reverse=True)
+        for val in candidates:
+            val_lower = val.lower()
+            # Always use word boundary matching to avoid substring false positives
+            # (e.g. "Format" inside "information")
+            if re.search(r'\b' + re.escape(val_lower) + r'\b', q_lower):
+                matches[col_idx] = val
+                break
+
+    return matches
+
+
+def build_targeted_sample(rows, period_rows, entity_filters, aggregates_text, period_year, period_month, period_half):
+    """Build a targeted sample: filter period rows by mentioned entities.
+    Cross-check against aggregates and do a broader search if counts don't match."""
+    from datetime import datetime
+
+    if not period_rows or not entity_filters:
+        return period_rows, None
+
+    # Filter period rows by entity matches
+    targeted = []
+    for row in period_rows:
+        match = True
+        for col_idx, val in entity_filters.items():
+            row_val = str(row[col_idx]).strip() if len(row) > col_idx and row[col_idx] else ""
+            if row_val != val:
+                match = False
+                break
+        if match:
+            targeted.append(row)
+
+    # Cross-check: try to find expected count from aggregates
+    # Look for the firm name + count in the aggregate text
+    expected_count = None
+    if 5 in entity_filters:
+        import re
+        firm_name = entity_filters[5]
+        # Aggregates format: "FirmName: X deals"
+        pattern = re.escape(firm_name) + r':\s*(\d+)\s*deal'
+        agg_match = re.search(pattern, aggregates_text, re.IGNORECASE)
+        if agg_match:
+            expected_count = int(agg_match.group(1))
+
+    discrepancy_note = None
+    if expected_count and len(targeted) < expected_count:
+        # Targeted filter found fewer rows than aggregates say exist —
+        # do a broader search across ALL rows (not just period) for this entity
+        broader = []
+        for row in rows:
+            row_val = str(row[5]).strip() if len(row) > 5 and row[5] else ""
+            if 5 in entity_filters and row_val == entity_filters[5]:
+                try:
+                    d = datetime.strptime(str(row[0]), "%m/%d/%Y")
+                    if d.year == period_year and d.month == period_month:
+                        if period_half == "first" and d.day <= 15:
+                            broader.append(row)
+                        elif period_half == "second" and d.day > 15:
+                            broader.append(row)
+                        elif period_half == "full":
+                            broader.append(row)
+                except (ValueError, IndexError):
+                    pass
+
+        if len(broader) > len(targeted):
+            targeted = broader
+
+        if len(targeted) < expected_count:
+            discrepancy_note = f"Note: Aggregates indicate {expected_count} deals for {entity_filters.get(5, 'this entity')} in this period, but only {len(targeted)} rows found in the raw data."
+
+    return targeted, discrepancy_note
+
+
 def build_data_context(rows, headers, month_label, period_rows, mom_rows, yoy_rows):
     ctx = f"Dataset: WSJ Pro Add-On Deals database.\n"
     ctx += f"Columns: {', '.join(headers)}\n"
@@ -117,7 +270,7 @@ def compute_period_summary(rows, year, month, half):
     period_rows = filter_rows_by_period(rows, year, month, half)
     deals = set()
     firms = defaultdict(lambda: {"deals": set(), "sectors": set(), "platforms": set(), "acquisitions": []})
-    sectors = defaultdict(int)
+    sectors = defaultdict(set)  # sector -> set of deal codes
 
     for row in period_rows:
         deal_code = str(row[1]) if len(row) > 1 and row[1] else ""
@@ -136,33 +289,51 @@ def compute_period_summary(rows, year, month, half):
                 firms[firm]["platforms"].add(platform)
             if acquisition:
                 firms[firm]["acquisitions"].append(acquisition)
-        if sector:
-            sectors[sector] += 1
+        if sector and deal_code:
+            sectors[sector].add(deal_code)
 
     top_firms = sorted(firms.items(), key=lambda x: -len(x[1]["deals"]))[:5]
-    top_sectors = sorted(sectors.items(), key=lambda x: -x[1])[:5]
+    top_sectors = sorted(sectors.items(), key=lambda x: -len(x[1]))[:5]
 
     summary = f"Unique deals: {len(deals)}\n"
     summary += f"Unique PE firms: {len(firms)}\n"
-    summary += f"Top sectors: {', '.join(f'{s} ({c} rows)' for s, c in top_sectors)}\n"
+    summary += f"Top sectors: {', '.join(f'{s} ({len(c)} deals)' for s, c in top_sectors)}\n"
     summary += f"Top PE firms:\n"
     for name, info in top_firms:
         summary += f"  - {name}: {len(info['deals'])} deals, sectors: {', '.join(list(info['sectors'])[:3])}, platforms: {', '.join(list(info['platforms'])[:3])}, acquisitions: {', '.join(info['acquisitions'][:3])}\n"
 
-    # Firm-by-sector breakdown: for every firm, list deal count per sector
+    # Firm-by-sector breakdown: for every firm, list unique deal count per sector
     summary += "Firm activity by sector:\n"
-    firm_sector_map = defaultdict(lambda: defaultdict(int))
+    firm_sector_map = defaultdict(lambda: defaultdict(set))
     for row in period_rows:
         firm = str(row[5]).strip() if len(row) > 5 and row[5] else ""
         sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
         deal_code = str(row[1]) if len(row) > 1 and row[1] else ""
         if firm and sector and deal_code:
-            firm_sector_map[firm][sector] += 1
-    for firm_name, sector_counts in sorted(firm_sector_map.items(), key=lambda x: -sum(x[1].values()))[:10]:
-        sector_str = ", ".join(f"{s}({c})" for s, c in sorted(sector_counts.items(), key=lambda x: -x[1]))
+            firm_sector_map[firm][sector].add(deal_code)
+    for firm_name, sector_deals in sorted(firm_sector_map.items(), key=lambda x: -sum(len(v) for v in x[1].values()))[:10]:
+        sector_str = ", ".join(f"{s}({len(d)})" for s, d in sorted(sector_deals.items(), key=lambda x: -len(x[1])))
         summary += f"  - {firm_name}: {sector_str}\n"
 
     return summary, len(deals)
+
+
+def build_top_firms_detail(rows, year, month, half, top_firms_list):
+    """Build a detailed breakdown of the top firms' actual deals for the auto-card prompt."""
+    period_rows = filter_rows_by_period(rows, year, month, half)
+    top_firm_names = set(name for name, _ in top_firms_list[:5])
+    detail = ""
+    for firm_name, deal_count in top_firms_list[:5]:
+        detail += f"\n{firm_name} ({deal_count} deals):\n"
+        for row in period_rows:
+            row_firm = str(row[5]).strip() if len(row) > 5 and row[5] else ""
+            if row_firm == firm_name:
+                date = str(row[0]) if row[0] else ""
+                platform = str(row[9]).strip() if len(row) > 9 and row[9] else ""
+                acquisition = str(row[10]).strip() if len(row) > 10 and row[10] else ""
+                sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
+                detail += f"  - {date}: platform={platform}, acquired={acquisition}, sector={sector}\n"
+    return detail
 
 
 def compute_historical_context(rows, month, half):
@@ -195,7 +366,7 @@ def compute_quarter_summary(rows, year, quarter):
     period_rows = filter_rows_by_quarter(rows, year, quarter)
     deals = set()
     firms = defaultdict(lambda: {"deals": set(), "sectors": set(), "platforms": set(), "acquisitions": []})
-    sectors = defaultdict(int)
+    sectors = defaultdict(set)  # sector -> set of deal codes
 
     for row in period_rows:
         deal_code = str(row[1]) if len(row) > 1 and row[1] else ""
@@ -214,30 +385,30 @@ def compute_quarter_summary(rows, year, quarter):
                 firms[firm]["platforms"].add(platform)
             if acquisition:
                 firms[firm]["acquisitions"].append(acquisition)
-        if sector:
-            sectors[sector] += 1
+        if sector and deal_code:
+            sectors[sector].add(deal_code)
 
     top_firms = sorted(firms.items(), key=lambda x: -len(x[1]["deals"]))[:5]
-    top_sectors = sorted(sectors.items(), key=lambda x: -x[1])[:5]
+    top_sectors = sorted(sectors.items(), key=lambda x: -len(x[1]))[:5]
 
     summary = f"Unique deals: {len(deals)}\n"
     summary += f"Unique PE firms: {len(firms)}\n"
-    summary += f"Top sectors: {', '.join(f'{s} ({c} rows)' for s, c in top_sectors)}\n"
+    summary += f"Top sectors: {', '.join(f'{s} ({len(c)} deals)' for s, c in top_sectors)}\n"
     summary += f"Top PE firms:\n"
     for name, info in top_firms:
         summary += f"  - {name}: {len(info['deals'])} deals, sectors: {', '.join(list(info['sectors'])[:3])}, platforms: {', '.join(list(info['platforms'])[:3])}, acquisitions: {', '.join(info['acquisitions'][:3])}\n"
 
-    # Firm-by-sector breakdown
+    # Firm-by-sector breakdown (unique deals)
     summary += "Firm activity by sector:\n"
-    firm_sector_map = defaultdict(lambda: defaultdict(int))
+    firm_sector_map = defaultdict(lambda: defaultdict(set))
     for row in period_rows:
         firm = str(row[5]).strip() if len(row) > 5 and row[5] else ""
         sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
         deal_code = str(row[1]) if len(row) > 1 and row[1] else ""
         if firm and sector and deal_code:
-            firm_sector_map[firm][sector] += 1
-    for firm_name, sector_counts in sorted(firm_sector_map.items(), key=lambda x: -sum(x[1].values()))[:10]:
-        sector_str = ", ".join(f"{s}({c})" for s, c in sorted(sector_counts.items(), key=lambda x: -x[1]))
+            firm_sector_map[firm][sector].add(deal_code)
+    for firm_name, sector_deals in sorted(firm_sector_map.items(), key=lambda x: -sum(len(v) for v in x[1].values()))[:10]:
+        sector_str = ", ".join(f"{s}({len(d)})" for s, d in sorted(sector_deals.items(), key=lambda x: -len(x[1])))
         summary += f"  - {firm_name}: {sector_str}\n"
 
     return summary, len(deals)
@@ -309,24 +480,26 @@ def auto_card():
     historical = compute_historical_context(rows, month, half)
     historical_str = ", ".join(f"{y}: {c} deals" for y, c in historical.items())
 
-    # Compute sector YoY changes for the current period
+    # Compute sector YoY changes for the current period (unique deals, not rows)
     from collections import defaultdict
     current_sector_rows = filter_rows_by_period(rows, year, month, half)
     yoy_sector_rows = filter_rows_by_period(rows, year - 1, month, half)
-    current_sectors = defaultdict(int)
-    yoy_sectors = defaultdict(int)
+    current_sectors = defaultdict(set)
+    yoy_sectors = defaultdict(set)
     for row in current_sector_rows:
         sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
-        if sector:
-            current_sectors[sector] += 1
+        deal_code = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+        if sector and deal_code:
+            current_sectors[sector].add(deal_code)
     for row in yoy_sector_rows:
         sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
-        if sector:
-            yoy_sectors[sector] += 1
+        deal_code = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+        if sector and deal_code:
+            yoy_sectors[sector].add(deal_code)
     sector_changes = []
     for sector in current_sectors:
-        curr = current_sectors[sector]
-        prev = yoy_sectors.get(sector, 0)
+        curr = len(current_sectors[sector])
+        prev = len(yoy_sectors.get(sector, set()))
         pct = round(((curr - prev) / prev) * 100) if prev else None
         sector_changes.append((sector, curr, prev, pct))
     sector_changes.sort(key=lambda x: x[1], reverse=True)
@@ -433,6 +606,9 @@ Year over year: {yoy_pct:+d}% change ({yoy_deals} → {current_deals} deals)
 Sector YoY:
 {sector_yoy_str}
 
+=== RAW DEAL DATA FOR TOP FIRMS (use for accurate names in line2) ===
+{build_top_firms_detail(rows, year, month, half, top_firms_list)}
+
 === CRITICAL: VERIFY BEFORE OUTPUT ===
 - bigNumberHed MUST be exactly "{yoy_pct:+d}%" — no rounding, no changes.
 - Any deal count you write in line1 or line2 MUST match the VERIFIED FACTS above.
@@ -487,23 +663,25 @@ def auto_card_quarter(data, rows, headers, year):
     historical = compute_historical_quarters(rows, quarter)
     historical_str = ", ".join(f"{y}: {c} deals" for y, c in historical.items())
 
-    # Sector YoY changes
+    # Sector YoY changes (unique deals, not rows)
     current_sector_rows = filter_rows_by_quarter(rows, year, quarter)
     yoy_sector_rows = filter_rows_by_quarter(rows, year - 1, quarter)
-    current_sectors = defaultdict(int)
-    yoy_sectors = defaultdict(int)
+    current_sectors = defaultdict(set)
+    yoy_sectors = defaultdict(set)
     for row in current_sector_rows:
         sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
-        if sector:
-            current_sectors[sector] += 1
+        deal_code = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+        if sector and deal_code:
+            current_sectors[sector].add(deal_code)
     for row in yoy_sector_rows:
         sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
-        if sector:
-            yoy_sectors[sector] += 1
+        deal_code = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+        if sector and deal_code:
+            yoy_sectors[sector].add(deal_code)
     sector_changes = []
     for sector in current_sectors:
-        curr = current_sectors[sector]
-        prev = yoy_sectors.get(sector, 0)
+        curr = len(current_sectors[sector])
+        prev = len(yoy_sectors.get(sector, set()))
         pct = round(((curr - prev) / prev) * 100) if prev else None
         sector_changes.append((sector, curr, prev, pct))
     sector_changes.sort(key=lambda x: x[1], reverse=True)
@@ -732,9 +910,9 @@ def compute_aggregates(rows):
     from datetime import datetime
     from collections import defaultdict
 
-    yearly = defaultdict(lambda: {"deals": set(), "firms": set(), "platforms": set(), "sectors": defaultdict(int), "firm_deals": defaultdict(int)})
-    monthly = defaultdict(lambda: {"deals": set(), "firms": set(), "platforms": set(), "sectors": defaultdict(int), "firm_deals": defaultdict(int)})
-    half_monthly = defaultdict(lambda: {"deals": set(), "firms": set(), "platforms": set(), "sectors": defaultdict(int), "firm_deals": defaultdict(int)})
+    yearly = defaultdict(lambda: {"deals": set(), "firms": set(), "platforms": set(), "sectors": defaultdict(set), "firm_deals": defaultdict(set)})
+    monthly = defaultdict(lambda: {"deals": set(), "firms": set(), "platforms": set(), "sectors": defaultdict(set), "firm_deals": defaultdict(set)})
+    half_monthly = defaultdict(lambda: {"deals": set(), "firms": set(), "platforms": set(), "sectors": defaultdict(set), "firm_deals": defaultdict(set)})
 
     for row in rows:
         try:
@@ -759,14 +937,15 @@ def compute_aggregates(rows):
                 bucket["deals"].add(deal_code)
             if firm:
                 bucket["firms"].add(firm)
-                bucket["firm_deals"][firm] += 1
+                if deal_code:
+                    bucket["firm_deals"][firm].add(deal_code)
             if platform:
                 bucket["platforms"].add(platform)
-            if sector:
-                bucket["sectors"][sector] += 1
+            if sector and deal_code:
+                bucket["sectors"][sector].add(deal_code)
 
-    # Per-firm sector breakdown across all years
-    firm_sectors = defaultdict(lambda: defaultdict(int))
+    # Per-firm sector breakdown across all years (unique deals)
+    firm_sectors = defaultdict(lambda: defaultdict(set))
     for row in rows:
         try:
             datetime.strptime(str(row[0]), "%m/%d/%Y")
@@ -774,42 +953,43 @@ def compute_aggregates(rows):
             continue
         firm = str(row[5]).strip() if len(row) > 5 and row[5] else ""
         sector = str(row[11]).strip() if len(row) > 11 and row[11] else ""
-        if firm and sector:
-            firm_sectors[firm][sector] += 1
+        deal_code = str(row[1]) if len(row) > 1 and row[1] else ""
+        if firm and sector and deal_code:
+            firm_sectors[firm][sector].add(deal_code)
 
     # Format as readable text
     lines = []
     lines.append("=== YEARLY AGGREGATES ===")
     for year in sorted(yearly.keys()):
         b = yearly[year]
-        top_sectors = sorted(b["sectors"].items(), key=lambda x: -x[1])[:10]
-        top_firms = sorted(b["firm_deals"].items(), key=lambda x: -x[1])[:10]
+        top_sectors = sorted(b["sectors"].items(), key=lambda x: -len(x[1]))[:10]
+        top_firms = sorted(b["firm_deals"].items(), key=lambda x: -len(x[1]))[:10]
         lines.append(f"\n{year}: {len(b['deals'])} unique deals, {len(b['firms'])} unique PE firms, {len(b['platforms'])} platform cos.")
-        lines.append(f"  Top sectors: {', '.join(f'{s}({c})' for s,c in top_sectors)}")
-        lines.append(f"  Top firms: {', '.join(f'{f}({c})' for f,c in top_firms)}")
+        lines.append(f"  Top sectors: {', '.join(f'{s}({len(c)})' for s,c in top_sectors)}")
+        lines.append(f"  Top firms: {', '.join(f'{f}({len(c)})' for f,c in top_firms)}")
 
     lines.append("\n\n=== MONTHLY AGGREGATES ===")
     for month in sorted(monthly.keys()):
         b = monthly[month]
-        top_sectors = sorted(b["sectors"].items(), key=lambda x: -x[1])[:5]
-        top_firms = sorted(b["firm_deals"].items(), key=lambda x: -x[1])[:5]
+        top_sectors = sorted(b["sectors"].items(), key=lambda x: -len(x[1]))[:5]
+        top_firms = sorted(b["firm_deals"].items(), key=lambda x: -len(x[1]))[:5]
         lines.append(f"\n{month}: {len(b['deals'])} deals, {len(b['firms'])} firms, {len(b['platforms'])} platforms")
-        lines.append(f"  Sectors: {', '.join(f'{s}({c})' for s,c in top_sectors)}")
-        lines.append(f"  Top firms: {', '.join(f'{f}({c})' for f,c in top_firms)}")
+        lines.append(f"  Sectors: {', '.join(f'{s}({len(c)})' for s,c in top_sectors)}")
+        lines.append(f"  Top firms: {', '.join(f'{f}({len(c)})' for f,c in top_firms)}")
 
     lines.append("\n\n=== FIRST-HALF MONTHLY AGGREGATES (days 1-15) ===")
     for half_key in sorted(half_monthly.keys()):
         b = half_monthly[half_key]
-        top_sectors = sorted(b["sectors"].items(), key=lambda x: -x[1])[:5]
-        top_firms = sorted(b["firm_deals"].items(), key=lambda x: -x[1])[:5]
+        top_sectors = sorted(b["sectors"].items(), key=lambda x: -len(x[1]))[:5]
+        top_firms = sorted(b["firm_deals"].items(), key=lambda x: -len(x[1]))[:5]
         label = half_key.replace("-H1", " 1st half")
         lines.append(f"\n{label}: {len(b['deals'])} deals, {len(b['firms'])} firms")
-        lines.append(f"  Sectors: {', '.join(f'{s}({c})' for s,c in top_sectors)}")
-        lines.append(f"  Top firms: {', '.join(f'{f}({c})' for f,c in top_firms)}")
+        lines.append(f"  Sectors: {', '.join(f'{s}({len(c)})' for s,c in top_sectors)}")
+        lines.append(f"  Top firms: {', '.join(f'{f}({len(c)})' for f,c in top_firms)}")
 
     lines.append("\n\n=== FIRM ACTIVITY BY SECTOR (all-time) ===")
-    for firm_name, sector_counts in sorted(firm_sectors.items(), key=lambda x: -sum(x[1].values()))[:20]:
-        sector_str = ", ".join(f"{s}({c})" for s, c in sorted(sector_counts.items(), key=lambda x: -x[1]))
+    for firm_name, sector_deals in sorted(firm_sectors.items(), key=lambda x: -sum(len(v) for v in x[1].values()))[:20]:
+        sector_str = ", ".join(f"{s}({len(d)})" for s, d in sorted(sector_deals.items(), key=lambda x: -len(x[1])))
         lines.append(f"  {firm_name}: {sector_str}")
 
     return "\n".join(lines)
@@ -903,23 +1083,67 @@ def chat():
     ctx += f"Columns: {', '.join(headers)}\n"
     ctx += f"Total rows: {total_rows}\n\n"
     ctx += aggregates
-    ctx += f"\n\n=== SAMPLE RAW DATA (most recent {sample_limit} rows) ===\n"
+
+    # Try to extract a time period from the question and send relevant rows
     from datetime import datetime
-    dated_rows = []
-    for row in rows:
-        try:
-            d = datetime.strptime(str(row[0]), "%m/%d/%Y")
-            dated_rows.append((d, row))
-        except (ValueError, IndexError):
-            pass
-    dated_rows.sort(key=lambda x: x[0], reverse=True)
-    for _, row in dated_rows[:sample_limit]:
-        ctx += json.dumps(row, ensure_ascii=False) + "\n"
+    period_year, period_month, period_half, period_quarter = extract_period_from_question(question)
+    period_rows = None
+    if period_quarter and period_year:
+        period_rows = filter_rows_by_quarter(rows, period_year, period_quarter)
+    elif period_month and period_year:
+        period_rows = filter_rows_by_period(rows, period_year, period_month, period_half or "full")
+
+    # Extract entity filters (firm, platform, sector, etc.) from the question
+    entity_filters = extract_entities_from_question(question, rows)
+
+    if period_rows and entity_filters:
+        # Targeted: filter period rows by mentioned entities, cross-check against aggregates
+        targeted, discrepancy_note = build_targeted_sample(
+            rows, period_rows, entity_filters, aggregates,
+            period_year, period_month, period_half or "full"
+        )
+        entity_desc = ", ".join(f"col{k}={v}" for k, v in entity_filters.items())
+        ctx += f"\n\n=== TARGETED ROWS FOR QUERY ({len(targeted)} rows matching: {entity_desc}) ===\n"
+        for row in targeted:
+            ctx += json.dumps(row, ensure_ascii=False) + "\n"
+        if discrepancy_note:
+            ctx += f"\n{discrepancy_note}\n"
+        # Also include remaining period rows for broader context
+        ctx += f"\n=== ALL OTHER ROWS IN PERIOD ({len(period_rows) - len(targeted)} rows) ===\n"
+        targeted_set = set(id(r) for r in targeted)
+        for row in period_rows:
+            if id(row) not in targeted_set:
+                ctx += json.dumps(row, ensure_ascii=False) + "\n"
+    elif period_rows:
+        ctx += f"\n\n=== ALL ROWS FOR REQUESTED PERIOD ({len(period_rows)} rows) ===\n"
+        for row in period_rows:
+            ctx += json.dumps(row, ensure_ascii=False) + "\n"
+    else:
+        ctx += f"\n\n=== SAMPLE RAW DATA (most recent {sample_limit} rows) ===\n"
+        dated_rows = []
+        for row in rows:
+            try:
+                d = datetime.strptime(str(row[0]), "%m/%d/%Y")
+                dated_rows.append((d, row))
+            except (ValueError, IndexError):
+                pass
+        dated_rows.sort(key=lambda x: x[0], reverse=True)
+        for _, row in dated_rows[:sample_limit]:
+            ctx += json.dumps(row, ensure_ascii=False) + "\n"
 
     # Add verification context if this is a verify intent with card values
     verify_ctx = ""
     if card_values and card_context and is_verify_intent(question):
         verify_ctx = build_verify_context(card_values, card_context, rows)
+
+    period_note = ""
+    if period_rows and entity_filters:
+        period_note = """- The "TARGETED ROWS FOR QUERY" section contains ALL rows matching the entity and period you asked about. This is COMPLETE data, not a sample.
+- List EVERY row in the targeted section when answering. Do not say data is missing if rows appear there.
+- The "ALL OTHER ROWS IN PERIOD" section has the remaining deals in the same time period for broader context."""
+    elif period_rows:
+        period_note = """- The "ALL ROWS FOR REQUESTED PERIOD" section contains EVERY row for that time period — it is complete, not a sample.
+- When answering about that period, search through ALL provided period rows carefully. Do not say data is missing if it appears in those rows."""
 
     system_prompt = f"""You are a data analyst for WSJ Pro, answering questions about the Add-On Deals database.
 
@@ -935,6 +1159,7 @@ Rules:
 - Column "Sector" (index 11) is the industry.
 - Column 0 is the date in MM/DD/YYYY format.
 - Be concise but thorough. Use specific numbers.
+{period_note}
 
 {ctx}{verify_ctx}"""
 

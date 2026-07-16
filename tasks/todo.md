@@ -1,65 +1,64 @@
-# AI Chat: Persistent Memory + Data Verification
+# Enhanced Data Table: Expandable, Filterable, Searchable
 
 ## Plan
 
-Fix two issues with the AI chat feature:
-1. Chat history disappears on page navigation (no persistence, no conversational memory)
-2. Generated card text contains hallucinated numbers and firm names that don't match the data
+Add filtering, search, and row-count controls to the data table so users can manually verify data referenced by AI-generated card text. All changes are client-side only (no backend modifications needed).
 
 ## Checklist
 
-### Phase 1: Chat Memory (localStorage + conversational context)
-- [x] Add `chatHistory` array, `loadChatHistory()`, `saveChatHistory()` in `cardkit-shim.js`
-- [x] Restore saved messages on page load in `initAI()`
-- [x] Include last 6 messages as `history` in chat requests
-- [x] Add "Clear" button in `views/wsjpro.html`
-- [x] Update Python `/chat` endpoint to use multi-turn format with history
+### 1. Add filter bar HTML to `views/wsjpro.html`
+- [x] Insert `#ck-table-filters` div between `#ck-stats-summary` and `#ck-ai-chat`
+- [x] Row 1: text search input + rows-per-page dropdown (50/100/200/All)
+- [x] Row 2: Date From input, Date To input, PE Firm dropdown, Sector dropdown, Platform Co. dropdown, Clear Filters button
+- [x] Style inline to match existing 11-12px table aesthetic
 
-### Phase 2: Reduce Hallucination (prompt hardening)
-- [x] Restructure auto-card prompt — verified facts first, grounding instructions last
-- [x] Modify auto-card to compute structured stats dict inline
-- [x] Return `_stats` alongside generated card JSON in auto-card response
+### 2. Add `getFilteredRows()` function in `cardkit-shim.js`
+- [x] Starts with `tableData.rows`
+- [x] Applies date range filter (column 0) if from/to values set
+- [x] Applies PE Firm dropdown filter (column 5) if selected
+- [x] Applies Sector dropdown filter (column 11) if selected
+- [x] Applies Platform Co. dropdown filter (column 9) if selected
+- [x] Applies text search (case-insensitive substring across all DISPLAY_COLUMNS)
+- [x] Calls `sortByDateDesc()` equivalent on filtered subset
+- [x] Stores result in `tableData.sortedRows`
 
-### Phase 3: Auto-Verification After Card Generation
-- [x] Add `verifyCardText()` client-side check using `_stats`
-- [x] Show verification result in UI (green check or yellow warning)
-- [x] Add `/verify-card` endpoint in Python for deeper AI verification
-- [x] Add proxy route in `server/routes/sheets.js`
-- [x] Add verification result container in `views/wsjpro.html`
+### 3. Add `initFilters()` function in `cardkit-shim.js`
+- [x] Called after full data loads (end of Phase 2 in `initSheetsTable`)
+- [x] Extracts unique sorted values from columns 5, 9, 11 for dropdown population
+- [x] Renders `<option>` elements into each dropdown
+- [x] Wires up `change` event listeners on all filter controls
+- [x] Wires up debounced (300ms) `input` listener on text search
+- [x] Each listener calls `getFilteredRows()`, resets `currentPage = 0`, then `renderTable()`
 
-### Phase 4: Chat-Based Fact-Checking
-- [x] Add `getCurrentCardValues()` helper in `cardkit-shim.js`
-- [x] Include `card_values` and `card_context` in chat requests
-- [x] Add verify intent detection in Python `/chat` endpoint
-- [x] Add verification-focused prompt enrichment when verify intent detected
+### 4. Rows-per-page dropdown
+- [x] Replace fixed `PAGE_SIZE = 50` with a mutable `pageSize` variable (default 50)
+- [x] Dropdown options: 50, 100, 200, All
+- [x] "All" sets `pageSize` to `tableData.sortedRows.length`
+- [x] On change: update `pageSize`, reset `currentPage = 0`, re-render
+- [x] Update `renderTable()` and `renderPagination()` to use `pageSize` instead of `PAGE_SIZE`
+
+### 5. Clear Filters button
+- [x] Resets all dropdowns to empty/default, clears date inputs, clears search input
+- [x] Calls `getFilteredRows()` → `renderTable()`
+
+### 6. Test and verify
+- [x] Table loads normally at 10 rows (default)
+- [x] Rows-per-page dropdown works (10/20/50/100/All)
+- [x] Each column filter narrows the results
+- [x] Multiple filters combine with AND logic
+- [x] Text search filters in real-time with debounce
+- [x] Date range filtering works correctly
+- [x] Clear Filters resets everything
+- [x] Pagination updates correctly when filters are active
 
 ## Review
 
-### Changes Made
-
-**`scripts/cardkit-shim.js`** — Chat persistence + verification:
-- Added localStorage-backed chat history (`ck-ai-chat-history` key, max 50 messages)
-- `loadChatHistory()` / `saveChatHistory()` / `restoreChatMessages()` / `clearChatHistory()`
-- `handleChat()` now sends `history` (last 6 messages), `card_values`, and `card_context` in requests
-- Added `getCurrentCardValues()` and `getCardContext()` helpers
-- Added `verifyCardText(card, stats)` for client-side auto-verification after card generation
-- Auto-card success handler extracts `_stats` and runs verification
-
-**`views/wsjpro.html`** — UI additions:
-- "Clear" button in chat header
-- `#ck-verify-result` container for showing verification results
-
-**`sheets-service/ai.py`** — Backend AI improvements:
-- `/chat`: Multi-turn format with history, reduced sample rows when history present, verify intent detection with `is_verify_intent()`, enriched verification context via `build_verify_context()`
-- `/auto-card` (monthly + quarterly): Prompt restructured with verified facts first, grounding instructions last, returns `_stats` dict
-- New `/verify-card` endpoint: recomputes ground truth, checks bigNumberHed, deal counts, and firm names (using AI extraction)
-
-**`server/routes/sheets.js`** — Added proxy route for `/ai/verify-card`
-
-### How to test
-
-1. Load app → ask chat questions → navigate away → return → messages should persist
-2. Ask a follow-up question (e.g. "tell me more") → AI should have context
-3. Click "AI Auto-fill" → check verification result appears below chat
-4. After generating card, type "verify line1" in chat → should compare against computed data
-5. Click "Clear" → chat history wiped
+Fixed two bugs (date filter showing 11 rows instead of 19, dropdown truncating "Information Technology") and added enhancements:
+- Added `input` event listener on date fields for Chrome reliability
+- Called `getFilteredRows()` after Phase 2 data loads instead of `renderTable()`
+- Removed max-height from table wrapper; pagination controls visibility
+- Dropdowns dynamically narrow to available values when filters are active
+- Column headers show unique counts (deals, firms, platforms, etc.)
+- Entries count shown next to filters; pagination shows range/total with commas
+- Row selector options: 10 (default), 20, 50, 100, All
+- Table and filters wrapped in a bordered box
