@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-here is the filte
+
 # Start Flask sheets service in background
 cd /app/sheets-service
 python app.py &
