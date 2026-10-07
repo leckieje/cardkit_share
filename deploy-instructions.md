@@ -52,7 +52,7 @@ gcloud run deploy cardkit-wsjpro \
   --port=8080 \
   --memory=1Gi \
   --cpu=1 \
-  --min-instances=0 \
+  --min-instances=1 \
   --max-instances=3 \
   --set-env-vars="NODE_ENV=production,SHEETS_SERVICE_PORT=5050,GCS_BUCKET=dj-newsroom-stag-shared,GCS_PREFIX=jon_leckie"
 ```

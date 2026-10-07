@@ -25,6 +25,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/ai',       require('./routes/ai'));
 app.use('/api/sheets',   require('./routes/sheets'));
+app.use('/api/card-examples', require('./routes/card-examples'));
 
 // Static files: serve the cardkit-build directory (parent of server/).
 const STATIC_DIR = path.join(__dirname, '..');

@@ -822,7 +822,7 @@
   function computeQuarterStats(year, quarter) {
     var startMonth = (quarter - 1) * 3 + 1;
     var endMonth = quarter * 3;
-    var filtered = tableData.rows.filter(function (row) {
+    var filtered = filterBySector(tableData.rows).filter(function (row) {
       var d = new Date(row[0]);
       if (isNaN(d)) return false;
       var m = d.getMonth() + 1;
@@ -851,6 +851,7 @@
   function initStats() {
     var monthSelect = document.getElementById('ck-stats-month');
     var quarterSelect = document.getElementById('ck-stats-quarter');
+    var ytdMonthSelect = document.getElementById('ck-stats-ytd-month');
     if (!monthSelect) return;
 
     var months = getAvailableMonths();
@@ -872,6 +873,24 @@
       monthSelect.value = months[0];
     }
 
+    // Populate YTD month dropdown (same options as month select)
+    if (ytdMonthSelect) {
+      ytdMonthSelect.innerHTML = '';
+      months.forEach(function (m) {
+        var opt = document.createElement('option');
+        opt.value = m;
+        var parts = m.split('-');
+        var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        opt.textContent = monthNames[parseInt(parts[1]) - 1] + ' ' + parts[0];
+        if (m === lastFull) opt.selected = true;
+        ytdMonthSelect.appendChild(opt);
+      });
+      if (months.indexOf(lastFull) === -1 && months.length) {
+        ytdMonthSelect.value = months[0];
+      }
+      ytdMonthSelect.addEventListener('change', computeStats);
+    }
+
     // Populate quarter dropdown
     if (quarterSelect) {
       var quarters = getAvailableQuarters();
@@ -890,6 +909,12 @@
       quarterSelect.addEventListener('change', computeStats);
     }
 
+    // Wire custom date pickers
+    var customFrom = document.getElementById('ck-custom-from');
+    var customTo = document.getElementById('ck-custom-to');
+    if (customFrom) customFrom.addEventListener('change', computeStats);
+    if (customTo) customTo.addEventListener('change', computeStats);
+
     // Set default half based on 3pm EST cutoff on the 15th
     var halfRadio = document.querySelector('input[name="ck-half"][value="' + defaultHalf + '"]');
     if (halfRadio) halfRadio.checked = true;
@@ -902,24 +927,68 @@
     // Period type toggle
     document.querySelectorAll('input[name="ck-period-type"]').forEach(function (r) {
       r.addEventListener('change', function () {
+        var pt = getSelectedPeriodType();
         var monthControls = document.getElementById('ck-month-controls');
         var quarterControls = document.getElementById('ck-quarter-controls');
-        if (getSelectedPeriodType() === 'quarter') {
-          if (monthControls) monthControls.style.display = 'none';
-          if (quarterControls) quarterControls.style.display = '';
-        } else {
-          if (monthControls) monthControls.style.display = '';
-          if (quarterControls) quarterControls.style.display = 'none';
-        }
+        var ytdControls = document.getElementById('ck-ytd-controls');
+        var customControls = document.getElementById('ck-custom-controls');
+        if (monthControls) monthControls.style.display = pt === 'month' ? '' : 'none';
+        if (quarterControls) quarterControls.style.display = pt === 'quarter' ? '' : 'none';
+        if (ytdControls) ytdControls.style.display = pt === 'ytd' ? '' : 'none';
+        if (customControls) customControls.style.display = pt === 'custom' ? '' : 'none';
         computeStats();
       });
     });
 
+    // Sector filter dropdown
+    var sectorSelect = document.getElementById('ck-sector-filter');
+    if (sectorSelect) {
+      var sectorCounts = {};
+      tableData.rows.forEach(function (row) {
+        var sector = row[11] != null ? String(row[11]).trim() : '';
+        var dealCode = row[1] != null ? String(row[1]) : '';
+        if (sector && dealCode) {
+          if (!sectorCounts[sector]) sectorCounts[sector] = {};
+          sectorCounts[sector][dealCode] = true;
+        }
+      });
+      var sectorList = Object.keys(sectorCounts).map(function (s) {
+        return { name: s, count: Object.keys(sectorCounts[s]).length };
+      }).sort(function (a, b) { return b.count - a.count; });
+
+      sectorSelect.innerHTML = '';
+      var allOpt = document.createElement('option');
+      allOpt.value = '';
+      allOpt.textContent = 'All Sectors';
+      sectorSelect.appendChild(allOpt);
+      sectorList.forEach(function (s) {
+        var opt = document.createElement('option');
+        opt.value = s.name;
+        opt.textContent = s.name + ' (' + s.count + ')';
+        sectorSelect.appendChild(opt);
+      });
+      sectorSelect.addEventListener('change', computeStats);
+    }
+
     computeStats();
   }
 
+  function getSelectedSector() {
+    var sel = document.getElementById('ck-sector-filter');
+    return sel ? sel.value : '';
+  }
+
+  function filterBySector(rows) {
+    var sector = getSelectedSector();
+    if (!sector) return rows;
+    return rows.filter(function (row) {
+      var s = row[11] != null ? String(row[11]).trim() : '';
+      return s === sector;
+    });
+  }
+
   function computePeriodStats(y, m, half) {
-    var filtered = tableData.rows.filter(function (row) {
+    var filtered = filterBySector(tableData.rows).filter(function (row) {
       var d = new Date(row[0]);
       if (isNaN(d)) return false;
       if (d.getFullYear() !== y || (d.getMonth() + 1) !== m) return false;
@@ -957,7 +1026,7 @@
   // Returns per-year stats for the same month+half across all years in the dataset.
   function getMonthHistoricalStats(month, half) {
     var years = {};
-    tableData.rows.forEach(function (row) {
+    filterBySector(tableData.rows).forEach(function (row) {
       var d = new Date(row[0]);
       if (isNaN(d)) return;
       if ((d.getMonth() + 1) !== month) return;
@@ -989,7 +1058,7 @@
     var startMonth = (quarter - 1) * 3 + 1;
     var endMonth   = quarter * 3;
     var years = {};
-    tableData.rows.forEach(function (row) {
+    filterBySector(tableData.rows).forEach(function (row) {
       var d = new Date(row[0]);
       if (isNaN(d)) return;
       var m = d.getMonth() + 1;
@@ -1056,6 +1125,10 @@
 
     if (periodType === 'quarter') {
       computeStatsQuarter(summaryEl);
+    } else if (periodType === 'ytd') {
+      computeStatsYtd(summaryEl);
+    } else if (periodType === 'custom') {
+      computeStatsCustom(summaryEl);
     } else {
       computeStatsMonth(summaryEl);
     }
@@ -1073,7 +1146,7 @@
     var halfRadio = document.querySelector('input[name="ck-half"]:checked');
     var half = halfRadio ? halfRadio.value : 'full';
 
-    var filtered = tableData.rows.filter(function (row) {
+    var filtered = filterBySector(tableData.rows.filter(function (row) {
       var d = new Date(row[0]);
       if (isNaN(d)) return false;
       if (d.getFullYear() !== year || (d.getMonth() + 1) !== month) return false;
@@ -1081,12 +1154,13 @@
       if (half === 'first' && day > 15) return false;
       if (half === 'second' && day <= 15) return false;
       return true;
-    });
+    }));
 
     var dealCodes = {};
     var peFirms = {};
     var platforms = {};
-    var sectors = {};
+    var sectorDeals = {};
+    var firmDeals = {};
 
     filtered.forEach(function (row) {
       var dealCode = row[1] != null ? String(row[1]) : '';
@@ -1095,19 +1169,26 @@
       var sector = row[11] != null ? String(row[11]).trim() : '';
 
       if (dealCode) dealCodes[dealCode] = true;
-      if (peFirm) peFirms[peFirm] = (peFirms[peFirm] || 0) + 1;
+      if (peFirm) peFirms[peFirm] = true;
       if (platform) platforms[platform] = true;
-      if (sector) sectors[sector] = (sectors[sector] || 0) + 1;
+      if (sector && dealCode) {
+        if (!sectorDeals[sector]) sectorDeals[sector] = {};
+        sectorDeals[sector][dealCode] = true;
+      }
+      if (peFirm && dealCode) {
+        if (!firmDeals[peFirm]) firmDeals[peFirm] = {};
+        firmDeals[peFirm][dealCode] = true;
+      }
     });
 
     var totalDeals = Object.keys(dealCodes).length;
     var uniqueFirms = Object.keys(peFirms).length;
     var uniquePlatforms = Object.keys(platforms).length;
 
-    var topSectors = Object.keys(sectors).map(function (k) { return { name: k, count: sectors[k] }; })
+    var topSectors = Object.keys(sectorDeals).map(function (k) { return { name: k, count: Object.keys(sectorDeals[k]).length }; })
       .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
 
-    var topFirms = Object.keys(peFirms).map(function (k) { return { name: k, count: peFirms[k] }; })
+    var topFirms = Object.keys(firmDeals).map(function (k) { return { name: k, count: Object.keys(firmDeals[k]).length }; })
       .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
 
     var prevMonthYear = month === 1 ? year - 1 : year;
@@ -1124,6 +1205,8 @@
     var label = monthNames[month - 1] + ' ' + year;
     if (half === 'first') label += ' (1st half)';
 
+    var sectorLabel = getSelectedSector();
+    if (sectorLabel) label += ' — ' + sectorLabel;
     var html = '<div style="margin-bottom:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#666">' + escapeHtml(label) + '</div>';
     html += '<div style="display:flex;gap:12px;margin-bottom:10px">';
     html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
@@ -1172,17 +1255,18 @@
     var startMonth = (quarter - 1) * 3 + 1;
     var endMonth = quarter * 3;
 
-    var filtered = tableData.rows.filter(function (row) {
+    var filtered = filterBySector(tableData.rows.filter(function (row) {
       var d = new Date(row[0]);
       if (isNaN(d)) return false;
       var m = d.getMonth() + 1;
       return d.getFullYear() === year && m >= startMonth && m <= endMonth;
-    });
+    }));
 
     var dealCodes = {};
     var peFirms = {};
     var platforms = {};
-    var sectors = {};
+    var sectorDeals = {};
+    var firmDeals = {};
 
     filtered.forEach(function (row) {
       var dealCode = row[1] != null ? String(row[1]) : '';
@@ -1191,19 +1275,26 @@
       var sector = row[11] != null ? String(row[11]).trim() : '';
 
       if (dealCode) dealCodes[dealCode] = true;
-      if (peFirm) peFirms[peFirm] = (peFirms[peFirm] || 0) + 1;
+      if (peFirm) peFirms[peFirm] = true;
       if (platform) platforms[platform] = true;
-      if (sector) sectors[sector] = (sectors[sector] || 0) + 1;
+      if (sector && dealCode) {
+        if (!sectorDeals[sector]) sectorDeals[sector] = {};
+        sectorDeals[sector][dealCode] = true;
+      }
+      if (peFirm && dealCode) {
+        if (!firmDeals[peFirm]) firmDeals[peFirm] = {};
+        firmDeals[peFirm][dealCode] = true;
+      }
     });
 
     var totalDeals = Object.keys(dealCodes).length;
     var uniqueFirms = Object.keys(peFirms).length;
     var uniquePlatforms = Object.keys(platforms).length;
 
-    var topSectors = Object.keys(sectors).map(function (k) { return { name: k, count: sectors[k] }; })
+    var topSectors = Object.keys(sectorDeals).map(function (k) { return { name: k, count: Object.keys(sectorDeals[k]).length }; })
       .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
 
-    var topFirms = Object.keys(peFirms).map(function (k) { return { name: k, count: peFirms[k] }; })
+    var topFirms = Object.keys(firmDeals).map(function (k) { return { name: k, count: Object.keys(firmDeals[k]).length }; })
       .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
 
     // QoQ: previous quarter
@@ -1219,6 +1310,8 @@
 
     var label = 'Q' + quarter + ' ' + year;
 
+    var sectorLabel = getSelectedSector();
+    if (sectorLabel) label += ' — ' + sectorLabel;
     var html = '<div style="margin-bottom:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#666">' + escapeHtml(label) + '</div>';
     html += '<div style="display:flex;gap:12px;margin-bottom:10px">';
     html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
@@ -1238,6 +1331,321 @@
     html += '<div style="font-size:10px;color:#666;margin:2px 0">Platform Cos.</div>';
     html += '<div>' + changeLabel(uniquePlatforms, qoqStats.platforms, 'QoQ') + ' ' + changeLabel(uniquePlatforms, yoyStats.platforms, 'YoY') + '</div>';
     html += rankLabel(year, uniquePlatforms, historical, 'platforms');
+    html += '</div>';
+    html += '</div>';
+
+    if (topSectors.length) {
+      html += '<div style="font-size:11px;margin-bottom:2px"><strong>Top sectors:</strong> ';
+      html += topSectors.map(function (s) { return escapeHtml(s.name) + ' (' + s.count + ')'; }).join(', ');
+      html += '</div>';
+    }
+
+    if (topFirms.length) {
+      html += '<div style="font-size:11px"><strong>Most active firms:</strong> ';
+      html += topFirms.map(function (f) { return escapeHtml(f.name) + ' (' + f.count + ')'; }).join(', ');
+      html += '</div>';
+    }
+
+    summaryEl.innerHTML = html;
+  }
+
+  function filterRowsByDateRange(startDate, endDate) {
+    return filterBySector(tableData.rows).filter(function (row) {
+      var d = new Date(row[0]);
+      if (isNaN(d)) return false;
+      return d >= startDate && d <= endDate;
+    });
+  }
+
+  function computeRangeStats(startDate, endDate) {
+    var filtered = filterRowsByDateRange(startDate, endDate);
+    var dealCodes = {};
+    var peFirms = {};
+    var platforms = {};
+    filtered.forEach(function (row) {
+      var dealCode = row[1] != null ? String(row[1]) : '';
+      var peFirm = row[5] != null ? String(row[5]).trim() : '';
+      var platform = row[9] != null ? String(row[9]).trim() : '';
+      if (dealCode) dealCodes[dealCode] = true;
+      if (peFirm) peFirms[peFirm] = true;
+      if (platform) platforms[platform] = true;
+    });
+    return {
+      deals: Object.keys(dealCodes).length,
+      firms: Object.keys(peFirms).length,
+      platforms: Object.keys(platforms).length,
+    };
+  }
+
+  function getYtdHistoricalStats(throughMonth) {
+    var years = {};
+    filterBySector(tableData.rows).forEach(function (row) {
+      var d = new Date(row[0]);
+      if (isNaN(d)) return;
+      if ((d.getMonth() + 1) > throughMonth) return;
+      var y = d.getFullYear();
+      if (!years[y]) years[y] = { dealCodes: {}, peFirms: {}, platforms: {} };
+      var dealCode = row[1] != null ? String(row[1]) : '';
+      var peFirm   = row[5] != null ? String(row[5]).trim() : '';
+      var platform = row[9] != null ? String(row[9]).trim() : '';
+      if (dealCode) years[y].dealCodes[dealCode] = true;
+      if (peFirm)   years[y].peFirms[peFirm] = true;
+      if (platform) years[y].platforms[platform] = true;
+    });
+    var result = {};
+    Object.keys(years).forEach(function (y) {
+      result[y] = {
+        deals:     Object.keys(years[y].dealCodes).length,
+        firms:     Object.keys(years[y].peFirms).length,
+        platforms: Object.keys(years[y].platforms).length,
+      };
+    });
+    return result;
+  }
+
+  function computeStatsYtd(summaryEl) {
+    var ytdSelect = document.getElementById('ck-stats-ytd-month');
+    if (!ytdSelect) return;
+
+    var val = ytdSelect.value;
+    var parts = val.split('-');
+    var year = parseInt(parts[0]);
+    var throughMonth = parseInt(parts[1]);
+
+    var filtered = filterBySector(tableData.rows.filter(function (row) {
+      var d = new Date(row[0]);
+      if (isNaN(d)) return false;
+      return d.getFullYear() === year && (d.getMonth() + 1) <= throughMonth;
+    }));
+
+    var dealCodes = {};
+    var peFirms = {};
+    var platforms = {};
+    var sectorDeals = {};
+    var firmDeals = {};
+
+    filtered.forEach(function (row) {
+      var dealCode = row[1] != null ? String(row[1]) : '';
+      var peFirm = row[5] != null ? String(row[5]).trim() : '';
+      var platform = row[9] != null ? String(row[9]).trim() : '';
+      var sector = row[11] != null ? String(row[11]).trim() : '';
+
+      if (dealCode) dealCodes[dealCode] = true;
+      if (peFirm) peFirms[peFirm] = true;
+      if (platform) platforms[platform] = true;
+      if (sector && dealCode) {
+        if (!sectorDeals[sector]) sectorDeals[sector] = {};
+        sectorDeals[sector][dealCode] = true;
+      }
+      if (peFirm && dealCode) {
+        if (!firmDeals[peFirm]) firmDeals[peFirm] = {};
+        firmDeals[peFirm][dealCode] = true;
+      }
+    });
+
+    var totalDeals = Object.keys(dealCodes).length;
+    var uniqueFirms = Object.keys(peFirms).length;
+    var uniquePlatforms = Object.keys(platforms).length;
+
+    var topSectors = Object.keys(sectorDeals).map(function (k) { return { name: k, count: Object.keys(sectorDeals[k]).length }; })
+      .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
+
+    var topFirms = Object.keys(firmDeals).map(function (k) { return { name: k, count: Object.keys(firmDeals[k]).length }; })
+      .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
+
+    // YoY: same YTD window last year
+    var yoyFiltered = filterBySector(tableData.rows.filter(function (row) {
+      var d = new Date(row[0]);
+      if (isNaN(d)) return false;
+      return d.getFullYear() === (year - 1) && (d.getMonth() + 1) <= throughMonth;
+    }));
+    var yoyDeals = {};
+    var yoyFirms = {};
+    var yoyPlat = {};
+    yoyFiltered.forEach(function (row) {
+      var dc = row[1] != null ? String(row[1]) : '';
+      var f = row[5] != null ? String(row[5]).trim() : '';
+      var p = row[9] != null ? String(row[9]).trim() : '';
+      if (dc) yoyDeals[dc] = true;
+      if (f) yoyFirms[f] = true;
+      if (p) yoyPlat[p] = true;
+    });
+    var yoyStats = {
+      deals: Object.keys(yoyDeals).length,
+      firms: Object.keys(yoyFirms).length,
+      platforms: Object.keys(yoyPlat).length,
+    };
+
+    // Latest month YoY: just the selected month this year vs same month last year
+    var mYoyStats = { deals: 0, firms: 0, platforms: 0 };
+    var curMonthFiltered = filterBySector(tableData.rows.filter(function (row) {
+      var d = new Date(row[0]);
+      if (isNaN(d)) return false;
+      return d.getFullYear() === year && (d.getMonth() + 1) === throughMonth;
+    }));
+    var cmDeals = {}, cmFirms = {}, cmPlat = {};
+    curMonthFiltered.forEach(function (row) {
+      var dc = row[1] != null ? String(row[1]) : '';
+      var f = row[5] != null ? String(row[5]).trim() : '';
+      var p = row[9] != null ? String(row[9]).trim() : '';
+      if (dc) cmDeals[dc] = true;
+      if (f) cmFirms[f] = true;
+      if (p) cmPlat[p] = true;
+    });
+    var curMonthStats = {
+      deals: Object.keys(cmDeals).length,
+      firms: Object.keys(cmFirms).length,
+      platforms: Object.keys(cmPlat).length,
+    };
+    var prevMonthFiltered = filterBySector(tableData.rows.filter(function (row) {
+      var d = new Date(row[0]);
+      if (isNaN(d)) return false;
+      return d.getFullYear() === (year - 1) && (d.getMonth() + 1) === throughMonth;
+    }));
+    var pmDeals = {}, pmFirms = {}, pmPlat = {};
+    prevMonthFiltered.forEach(function (row) {
+      var dc = row[1] != null ? String(row[1]) : '';
+      var f = row[5] != null ? String(row[5]).trim() : '';
+      var p = row[9] != null ? String(row[9]).trim() : '';
+      if (dc) pmDeals[dc] = true;
+      if (f) pmFirms[f] = true;
+      if (p) pmPlat[p] = true;
+    });
+    mYoyStats = {
+      deals: Object.keys(pmDeals).length,
+      firms: Object.keys(pmFirms).length,
+      platforms: Object.keys(pmPlat).length,
+    };
+
+    var historical = getYtdHistoricalStats(throughMonth);
+    historical[year] = { deals: totalDeals, firms: uniqueFirms, platforms: uniquePlatforms };
+
+    var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var label = 'YTD through ' + monthNames[throughMonth - 1] + ' ' + year;
+
+    var sectorLabel = getSelectedSector();
+    if (sectorLabel) label += ' — ' + sectorLabel;
+    var html = '<div style="margin-bottom:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#666">' + escapeHtml(label) + '</div>';
+    html += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+    html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
+    html += '<div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">' + totalDeals + '</div>';
+    html += '<div style="font-size:10px;color:#666;margin:2px 0">Deals</div>';
+    var mYoyLabel = monthNames[throughMonth - 1].substring(0, 3) + ' YoY';
+    html += '<div>' + changeLabel(curMonthStats.deals, mYoyStats.deals, mYoyLabel) + ' ' + changeLabel(totalDeals, yoyStats.deals, 'YTD YoY') + '</div>';
+    html += rankLabel(year, totalDeals, historical, 'deals');
+    html += '</div>';
+    html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
+    html += '<div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">' + uniqueFirms + '</div>';
+    html += '<div style="font-size:10px;color:#666;margin:2px 0">PE Firms</div>';
+    html += '<div>' + changeLabel(curMonthStats.firms, mYoyStats.firms, mYoyLabel) + ' ' + changeLabel(uniqueFirms, yoyStats.firms, 'YTD YoY') + '</div>';
+    html += rankLabel(year, uniqueFirms, historical, 'firms');
+    html += '</div>';
+    html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
+    html += '<div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">' + uniquePlatforms + '</div>';
+    html += '<div style="font-size:10px;color:#666;margin:2px 0">Platform Cos.</div>';
+    html += '<div>' + changeLabel(curMonthStats.platforms, mYoyStats.platforms, mYoyLabel) + ' ' + changeLabel(uniquePlatforms, yoyStats.platforms, 'YTD YoY') + '</div>';
+    html += rankLabel(year, uniquePlatforms, historical, 'platforms');
+    html += '</div>';
+    html += '</div>';
+
+    if (topSectors.length) {
+      html += '<div style="font-size:11px;margin-bottom:2px"><strong>Top sectors:</strong> ';
+      html += topSectors.map(function (s) { return escapeHtml(s.name) + ' (' + s.count + ')'; }).join(', ');
+      html += '</div>';
+    }
+
+    if (topFirms.length) {
+      html += '<div style="font-size:11px"><strong>Most active firms:</strong> ';
+      html += topFirms.map(function (f) { return escapeHtml(f.name) + ' (' + f.count + ')'; }).join(', ');
+      html += '</div>';
+    }
+
+    summaryEl.innerHTML = html;
+  }
+
+  function computeStatsCustom(summaryEl) {
+    var fromInput = document.getElementById('ck-custom-from');
+    var toInput = document.getElementById('ck-custom-to');
+    if (!fromInput || !toInput || !fromInput.value || !toInput.value) {
+      summaryEl.innerHTML = '<div style="font-size:11px;color:#999">Select a date range to view stats.</div>';
+      return;
+    }
+
+    var startDate = new Date(fromInput.value + 'T00:00:00');
+    var endDate = new Date(toInput.value + 'T00:00:00');
+    if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) {
+      summaryEl.innerHTML = '<div style="font-size:11px;color:#a94442">Invalid date range.</div>';
+      return;
+    }
+
+    var filtered = filterRowsByDateRange(startDate, endDate);
+
+    var dealCodes = {};
+    var peFirms = {};
+    var platforms = {};
+    var sectorDeals = {};
+    var firmDeals = {};
+
+    filtered.forEach(function (row) {
+      var dealCode = row[1] != null ? String(row[1]) : '';
+      var peFirm = row[5] != null ? String(row[5]).trim() : '';
+      var platform = row[9] != null ? String(row[9]).trim() : '';
+      var sector = row[11] != null ? String(row[11]).trim() : '';
+
+      if (dealCode) dealCodes[dealCode] = true;
+      if (peFirm) peFirms[peFirm] = true;
+      if (platform) platforms[platform] = true;
+      if (sector && dealCode) {
+        if (!sectorDeals[sector]) sectorDeals[sector] = {};
+        sectorDeals[sector][dealCode] = true;
+      }
+      if (peFirm && dealCode) {
+        if (!firmDeals[peFirm]) firmDeals[peFirm] = {};
+        firmDeals[peFirm][dealCode] = true;
+      }
+    });
+
+    var totalDeals = Object.keys(dealCodes).length;
+    var uniqueFirms = Object.keys(peFirms).length;
+    var uniquePlatforms = Object.keys(platforms).length;
+
+    var topSectors = Object.keys(sectorDeals).map(function (k) { return { name: k, count: Object.keys(sectorDeals[k]).length }; })
+      .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
+
+    var topFirms = Object.keys(firmDeals).map(function (k) { return { name: k, count: Object.keys(firmDeals[k]).length }; })
+      .sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
+
+    // YoY: shift both dates back one year
+    var yoyStart = new Date(startDate);
+    yoyStart.setFullYear(yoyStart.getFullYear() - 1);
+    var yoyEnd = new Date(endDate);
+    yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
+    var yoyStats = computeRangeStats(yoyStart, yoyEnd);
+
+    var days = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+    var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var label = monthNames[startDate.getMonth()] + ' ' + startDate.getDate() + ', ' + startDate.getFullYear() +
+      ' – ' + monthNames[endDate.getMonth()] + ' ' + endDate.getDate() + ', ' + endDate.getFullYear() +
+      ' (' + days + ' days)';
+
+    var sectorLabel = getSelectedSector();
+    if (sectorLabel) label += ' — ' + sectorLabel;
+    var html = '<div style="margin-bottom:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#666">' + escapeHtml(label) + '</div>';
+    html += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+    html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
+    html += '<div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">' + totalDeals + '</div>';
+    html += '<div style="font-size:10px;color:#666;margin:2px 0">Deals</div>';
+    html += '<div>' + changeLabel(totalDeals, yoyStats.deals, 'YoY') + '</div>';
+    html += '</div>';
+    html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
+    html += '<div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">' + uniqueFirms + '</div>';
+    html += '<div style="font-size:10px;color:#666;margin:2px 0">PE Firms</div>';
+    html += '<div>' + changeLabel(uniqueFirms, yoyStats.firms, 'YoY') + '</div>';
+    html += '</div>';
+    html += '<div style="flex:1;text-align:center;padding:10px 8px;background:#fff;border:1px solid #dee2e6;border-radius:6px">';
+    html += '<div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">' + uniquePlatforms + '</div>';
+    html += '<div style="font-size:10px;color:#666;margin:2px 0">Platform Cos.</div>';
+    html += '<div>' + changeLabel(uniquePlatforms, yoyStats.platforms, 'YoY') + '</div>';
     html += '</div>';
     html += '</div>';
 
@@ -1621,12 +2029,25 @@
   function getCardContext() {
     var periodType = getSelectedPeriodType();
     var ctx = { period_type: periodType };
+    var selectedSector = getSelectedSector();
+    if (selectedSector) ctx.sector = selectedSector;
     if (periodType === 'quarter') {
       var quarterSelect = document.getElementById('ck-stats-quarter');
       var val = quarterSelect ? quarterSelect.value : '';
       var qParts = val.split('-Q');
       ctx.year = parseInt(qParts[0]);
       ctx.quarter = parseInt(qParts[1]);
+    } else if (periodType === 'ytd') {
+      var ytdSelect = document.getElementById('ck-stats-ytd-month');
+      var ytdVal = ytdSelect ? ytdSelect.value : '';
+      var ytdParts = ytdVal.split('-');
+      ctx.year = parseInt(ytdParts[0]);
+      ctx.through_month = parseInt(ytdParts[1]);
+    } else if (periodType === 'custom') {
+      var fromInput = document.getElementById('ck-custom-from');
+      var toInput = document.getElementById('ck-custom-to');
+      ctx.start_date = fromInput ? fromInput.value : '';
+      ctx.end_date = toInput ? toInput.value : '';
     } else {
       var monthSelect = document.getElementById('ck-stats-month');
       var halfRadio = document.querySelector('input[name="ck-half"]:checked');
@@ -1678,6 +2099,8 @@
       statusEl.style.color = '#333';
     }
 
+    var selectedSector = getSelectedSector();
+
     var payload;
     if (periodType === 'quarter') {
       var quarterSelect = document.getElementById('ck-stats-quarter');
@@ -1708,10 +2131,72 @@
 
       payload = {
         headers: tableData.headers,
-        rows: relevantRows,
+        rows: filterBySector(relevantRows),
         year: year,
         quarter: quarter,
         period_type: 'quarter',
+        sector: selectedSector || undefined,
+      };
+    } else if (periodType === 'ytd') {
+      var ytdSelect = document.getElementById('ck-stats-ytd-month');
+      var ytdVal = ytdSelect ? ytdSelect.value : '';
+      var ytdParts = ytdVal.split('-');
+      var year = parseInt(ytdParts[0]);
+      var throughMonth = parseInt(ytdParts[1]);
+
+      // Send rows for current YTD and same YTD last year
+      var relevantRows = tableData.rows.filter(function (row) {
+        var d = new Date(row[0]);
+        if (isNaN(d)) return false;
+        var ry = d.getFullYear(), rm = d.getMonth() + 1;
+        if (ry === year && rm <= throughMonth) return true;
+        if (ry === (year - 1) && rm <= throughMonth) return true;
+        return false;
+      });
+
+      payload = {
+        headers: tableData.headers,
+        rows: filterBySector(relevantRows),
+        year: year,
+        through_month: throughMonth,
+        period_type: 'ytd',
+        sector: selectedSector || undefined,
+      };
+    } else if (periodType === 'custom') {
+      var fromInput = document.getElementById('ck-custom-from');
+      var toInput = document.getElementById('ck-custom-to');
+      if (!fromInput || !toInput || !fromInput.value || !toInput.value) {
+        if (statusEl) { statusEl.textContent = 'Select a date range first.'; statusEl.style.color = '#a94442'; }
+        return;
+      }
+      var startDate = new Date(fromInput.value + 'T00:00:00');
+      var endDate = new Date(toInput.value + 'T00:00:00');
+      var yoyStart = new Date(startDate);
+      yoyStart.setFullYear(yoyStart.getFullYear() - 1);
+      var yoyEnd = new Date(endDate);
+      yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
+
+      var relevantRows = tableData.rows.filter(function (row) {
+        var d = new Date(row[0]);
+        if (isNaN(d)) return false;
+        if (d >= startDate && d <= endDate) return true;
+        if (d >= yoyStart && d <= yoyEnd) return true;
+        return false;
+      });
+
+      // Format dates as MM/DD/YYYY for the backend
+      var fmtDate = function (dt) {
+        return (dt.getMonth() + 1) + '/' + dt.getDate() + '/' + dt.getFullYear();
+      };
+
+      payload = {
+        headers: tableData.headers,
+        rows: filterBySector(relevantRows),
+        start_date: fmtDate(startDate),
+        end_date: fmtDate(endDate),
+        year: startDate.getFullYear(),
+        period_type: 'custom',
+        sector: selectedSector || undefined,
       };
     } else {
       var monthSelect = document.getElementById('ck-stats-month');
@@ -1736,11 +2221,12 @@
 
       payload = {
         headers: tableData.headers,
-        rows: relevantRows,
+        rows: filterBySector(relevantRows),
         year: year,
         month: month,
         half: half,
         period_type: 'month',
+        sector: selectedSector || undefined,
       };
     }
 
@@ -1762,6 +2248,7 @@
         delete card._stats;
         applyAutoCard(card);
         if (stats) verifyCardText(card, stats);
+        promptSaveExample(card);
       })
       .catch(function (err) {
         if (statusEl) {
@@ -1782,7 +2269,7 @@
     var text = (card.line1 || '') + ' ' + (card.line2 || '');
     var dealMatches = text.match(/\b(\d{2,4})\s+deals?\b/g);
     if (dealMatches) {
-      var validCounts = [stats.deal_count, stats.yoy_deals, stats.mom_deals, stats.qoq_deals].filter(Boolean);
+      var validCounts = [stats.deal_count, stats.yoy_deals, stats.mom_deals, stats.qoq_deals, stats.month_deals_cur, stats.month_deals_prev].filter(Boolean);
       dealMatches.forEach(function (m) {
         var num = parseInt(m);
         if (validCounts.indexOf(num) === -1) {
@@ -1878,6 +2365,9 @@
       requestBody.card_values = cardValues;
       requestBody.card_context = getCardContext();
     }
+
+    // Send period context so backend can filter by active period type
+    requestBody.period_context = getCardContext();
 
     fetch(API_BASE + '/sheets/ai/chat', {
       method: 'POST',
@@ -2014,6 +2504,185 @@
   }
 
   // Auto-load table once the view is rendered
+  // ── Card History Tab ──────────────────────────────────────────────────────
+
+  function initViewTabs() {
+    var dataTab = document.getElementById('ck-tab-data');
+    var historyTab = document.getElementById('ck-tab-history');
+    var dataContainer = document.getElementById('ck-data-container');
+    var historyContainer = document.getElementById('ck-history-container');
+    if (!dataTab || !historyTab) return;
+
+    dataTab.addEventListener('click', function () {
+      dataTab.className = 'btn btn-xs btn-primary';
+      historyTab.className = 'btn btn-xs btn-default';
+      if (dataContainer) dataContainer.style.display = '';
+      if (historyContainer) historyContainer.style.display = 'none';
+    });
+
+    historyTab.addEventListener('click', function () {
+      historyTab.className = 'btn btn-xs btn-primary';
+      dataTab.className = 'btn btn-xs btn-default';
+      if (dataContainer) dataContainer.style.display = 'none';
+      if (historyContainer) historyContainer.style.display = '';
+      loadCardHistory();
+    });
+  }
+
+  function loadCardHistory() {
+    fetch(API_BASE + '/card-examples')
+      .then(function (r) { return r.json(); })
+      .then(function (examples) { renderHistoryTab(examples); })
+      .catch(function () {
+        var c = document.getElementById('ck-history-container');
+        if (c) c.innerHTML = '<div style="font-size:11px;color:#a94442">Failed to load card history.</div>';
+      });
+  }
+
+  function renderHistoryTab(examples) {
+    var container = document.getElementById('ck-history-container');
+    if (!container) return;
+
+    if (!examples.length) {
+      container.innerHTML = '<div style="font-size:11px;color:#999;padding:8px">No saved card examples yet. Generate a card with AI Auto-fill to get started.</div>';
+      return;
+    }
+
+    var html = '<div style="font-size:11px;margin-bottom:8px;color:#666">Showing ' + examples.length + ' saved cards. Active examples (used in AI prompt) are starred.</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
+
+    examples.forEach(function (ex) {
+      var isActive = ex.is_selected;
+      var borderColor = isActive ? '#3c763d' : '#ddd';
+      var bgColor = isActive ? '#f0f9f0' : '#fff';
+      var hed = ex.card_text && ex.card_text.bigNumberHed ? ex.card_text.bigNumberHed : '';
+      var line1 = ex.card_text && ex.card_text.line1 ? ex.card_text.line1 : '';
+      var preview = line1.length > 100 ? line1.substring(0, 100) + '…' : line1;
+
+      html += '<div style="border:1px solid ' + borderColor + ';border-radius:4px;padding:8px;background:' + bgColor + ';font-size:11px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+      html += '<div>';
+      html += '<strong>' + escapeHtml(ex.period_label || 'Unknown period') + '</strong>';
+      if (hed) html += ' <span style="color:#1a5276;font-weight:600">' + escapeHtml(hed) + '</span>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:4px;align-items:center">';
+      html += '<button class="btn btn-xs ' + (isActive ? 'btn-success' : 'btn-default') + '" data-example-select="' + escapeHtml(ex.id) + '" title="' + (isActive ? 'Deselect as active example' : 'Select as active example') + '">';
+      html += isActive ? '&#9733;' : '&#9734;';
+      html += '</button>';
+      html += '<button class="btn btn-xs btn-default" data-example-load="' + escapeHtml(ex.id) + '" title="Load into card">Load</button>';
+      html += '<button class="btn btn-xs btn-danger" data-example-delete="' + escapeHtml(ex.id) + '" title="Delete">&#10005;</button>';
+      html += '</div>';
+      html += '</div>';
+      if (preview) html += '<div style="color:#555">' + escapeHtml(preview) + '</div>';
+      html += '<div style="font-size:10px;color:#999;margin-top:2px">' + (ex.created_at ? new Date(ex.created_at).toLocaleDateString() : '') + '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    // Wire up buttons
+    container.querySelectorAll('[data-example-select]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-example-select');
+        fetch(API_BASE + '/card-examples/' + id + '/select', { method: 'PUT' })
+          .then(function (r) {
+            if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Failed'); });
+            loadCardHistory();
+          })
+          .catch(function (err) { alert(err.message); });
+      });
+    });
+
+    container.querySelectorAll('[data-example-load]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-example-load');
+        fetch(API_BASE + '/card-examples/' + id)
+          .then(function (r) { return r.json(); })
+          .then(function (ex) {
+            if (ex.card_text) applyAutoCard(ex.card_text);
+          });
+      });
+    });
+
+    container.querySelectorAll('[data-example-delete]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-example-delete');
+        if (!confirm('Delete this card example?')) return;
+        fetch(API_BASE + '/card-examples/' + id, { method: 'DELETE' })
+          .then(function () { loadCardHistory(); });
+      });
+    });
+  }
+
+  function buildPeriodLabel() {
+    var periodType = getSelectedPeriodType();
+    var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    if (periodType === 'quarter') {
+      var qs = document.getElementById('ck-stats-quarter');
+      return qs ? qs.value.replace('-', ' ') : '';
+    } else if (periodType === 'ytd') {
+      var ytdS = document.getElementById('ck-stats-ytd-month');
+      if (!ytdS) return '';
+      var p = ytdS.value.split('-');
+      return 'YTD through ' + monthNames[parseInt(p[1]) - 1] + ' ' + p[0];
+    } else if (periodType === 'custom') {
+      var f = document.getElementById('ck-custom-from');
+      var t = document.getElementById('ck-custom-to');
+      return (f && t) ? f.value + ' – ' + t.value : '';
+    } else {
+      var ms = document.getElementById('ck-stats-month');
+      var hr = document.querySelector('input[name="ck-half"]:checked');
+      if (!ms) return '';
+      var mp = ms.value.split('-');
+      var lbl = monthNames[parseInt(mp[1]) - 1] + ' ' + mp[0];
+      if (hr && hr.value === 'first') lbl += ' (1st half)';
+      return lbl;
+    }
+  }
+
+  function promptSaveExample(cardText) {
+    var statusEl = document.getElementById('ck-ai-autocard-status');
+    var saveHtml = ' <button id="ck-save-example-yes" class="btn btn-xs btn-success" style="margin-left:4px">Save as example</button>';
+    saveHtml += ' <button id="ck-save-example-no" class="btn btn-xs btn-default" style="margin-left:2px">Skip</button>';
+    if (statusEl) statusEl.innerHTML += saveHtml;
+
+    var yesBtn = document.getElementById('ck-save-example-yes');
+    var noBtn = document.getElementById('ck-save-example-no');
+
+    if (noBtn) noBtn.addEventListener('click', function () {
+      if (statusEl) statusEl.textContent = 'Done!';
+    });
+
+    if (yesBtn) yesBtn.addEventListener('click', function () {
+      var ctx = getCardContext();
+      var payload = {
+        card_text: cardText,
+        period: ctx,
+        period_label: buildPeriodLabel(),
+      };
+
+      fetch(API_BASE + '/card-examples', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Save failed');
+          if (statusEl) {
+            statusEl.textContent = 'Saved as example!';
+            statusEl.style.color = '#3c763d';
+          }
+        })
+        .catch(function () {
+          if (statusEl) {
+            statusEl.textContent = 'Save failed';
+            statusEl.style.color = '#a94442';
+          }
+        });
+    });
+  }
+
   function fixImageEditor() {
     document.querySelectorAll('.fileInputWrapper .button').forEach(function (btn) {
       btn.childNodes.forEach(function (node) {
@@ -2029,6 +2698,7 @@
       clearInterval(sheetsInterval);
       initSheetsTable();
       initAI();
+      initViewTabs();
       setTimeout(fixDefaults, 500);
       setTimeout(reorderSidebar, 600);
       setTimeout(fixImageEditor, 800);
